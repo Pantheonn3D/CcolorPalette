@@ -616,7 +616,7 @@ function ColorGenerator() {
           <div className="mobile-header">
 
             <button className="mobile-hint" onClick={() => generatePalette(colors.length)}>
-              Tap here to generate
+              Tap to generate
             </button>
 
             <div className="mobile-actions">
