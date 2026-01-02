@@ -706,7 +706,7 @@ function ColorGenerator() {
                         copyHex(color.id, color.hex);
                         e.currentTarget.blur();
                       }}
-                      title="Copy hex"
+                      title="Copy hex" 
                       style={{ color: textColor }}
                     >
                       {isCopied ? <Check size={20} /> : <Copy size={20} />}
