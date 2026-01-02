@@ -14,6 +14,9 @@
   --leading-tight: 1.2;
   --leading-normal: 1.5;
   --leading-loose: 1.8;
+  
+  /* Dynamic viewport height fallback */
+  --vh: 1vh;
 }
 
 * {
@@ -25,6 +28,8 @@
 html {
   overflow: hidden;
   height: 100%;
+  /* Fix for mobile browsers */
+  height: -webkit-fill-available;
 }
 
 body {
@@ -38,11 +43,17 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height */
+  min-height: -webkit-fill-available;
   overflow: hidden;
 }
 
 #root {
   height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   overflow: hidden;
 }
 
@@ -59,12 +70,16 @@ body {
 /* Page wrapper */
 .app-wrapper {
   height: 100vh;
+  height: 100dvh;
+  height: -webkit-fill-available;
   overflow: hidden;
 }
 
 /* Each page section */
 .page-section {
   height: 100vh;
+  height: 100dvh;
+  height: -webkit-fill-available;
   width: 100%;
   position: absolute;
   top: 0;
@@ -132,7 +147,7 @@ button {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1001;
+  z-index: 50;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -218,13 +233,13 @@ button {
   }
 }
 
-/* Nav Chevron - Mobile adjustments */
+/* Mobile nav chevron adjustments */
 @media (max-width: 768px) {
   .nav-chevron {
-    z-index: 50;
     bottom: 12px;
     padding: 6px 12px;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    /* Account for potential browser UI */
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
   .nav-chevron-label {

@@ -1,7 +1,11 @@
 .landing-content {
   background: white;
   min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   padding: 80px 48px 120px;
+  /* Account for bottom safe area */
+  padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
 }
 
@@ -429,6 +433,7 @@
 
   .landing-content {
     padding: 40px 16px 80px;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Hero */
@@ -572,6 +577,7 @@
 @media (max-width: 380px) {
   .landing-content {
     padding: 32px 12px 60px;
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   }
 
   .landing-hero h1 {

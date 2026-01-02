@@ -614,20 +614,9 @@ function ColorGenerator() {
         <main className="generator-container" ref={containerRef}>
           {/* Mobile Header Row */}
           <div className="mobile-header">
-            <button className="mobile-logo" onClick={goToGenerator}>
-              <div className="mobile-logo-mark">
-                {colors.slice(0, 3).map((color, i) => (
-                  <span
-                    key={i}
-                    className="mobile-logo-swatch"
-                    style={{ backgroundColor: color.hex }}
-                  />
-                ))}
-              </div>
-            </button>
 
             <button className="mobile-hint" onClick={() => generatePalette(colors.length)}>
-              Tap to generate
+              Tap here to generate
             </button>
 
             <div className="mobile-actions">
