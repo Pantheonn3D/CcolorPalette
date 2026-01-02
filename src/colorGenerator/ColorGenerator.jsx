@@ -147,15 +147,18 @@ function ColorGenerator() {
   // Parse URL on mount
   useEffect(() => {
     const parseUrlState = () => {
-      const path = window.location.pathname.slice(1);
+      const path = window.location.pathname.slice(1); // Remove leading "/"
       const params = new URLSearchParams(window.location.search);
 
-      if (path) {
-        const hexCodes = path.split('-').map((h) => `#${h.toUpperCase()}`);
-        if (
-          hexCodes.length >= 2 &&
-          hexCodes.every((h) => /^#[0-9A-F]{6}$/.test(h))
-        ) {
+      // Parse colors from path (e.g., "457B68-B6D9D7-569CA1")
+      if (path && path.length > 0) {
+        const hexCodes = path.split('-').map((h) => {
+          // Ensure proper format
+          const cleaned = h.toUpperCase().replace(/[^0-9A-F]/g, '');
+          return cleaned.length === 6 ? `#${cleaned}` : null;
+        }).filter(Boolean);
+
+        if (hexCodes.length >= 2) {
           const initialColors = hexCodes.map((hex) => ({
             id: generateId(),
             hex,
@@ -166,20 +169,34 @@ function ColorGenerator() {
         }
       }
 
-      if (params.has('mode')) setGenerationMode(params.get('mode'));
-      if (params.has('mood'))
-        setConstraints((prev) => ({ ...prev, mood: params.get('mood') }));
-      if (params.has('contrast'))
-        setConstraints((prev) => ({
-          ...prev,
-          minContrast: parseFloat(params.get('contrast')),
-        }));
-      if (params.has('dark'))
-        setConstraints((prev) => ({
-          ...prev,
-          darkModeFriendly: params.get('dark') === '1',
-        }));
-      if (params.has('vision')) setColorBlindMode(params.get('vision'));
+      // Parse settings from query params
+      if (params.has('mode')) {
+        const mode = params.get('mode');
+        if (['auto', 'mono', 'analogous', 'complementary', 'splitComplementary', 'triadic'].includes(mode)) {
+          setGenerationMode(mode);
+        }
+      }
+      if (params.has('mood')) {
+        const mood = params.get('mood');
+        if (['any', 'muted', 'pastel', 'vibrant', 'dark'].includes(mood)) {
+          setConstraints((prev) => ({ ...prev, mood }));
+        }
+      }
+      if (params.has('contrast')) {
+        const contrast = parseFloat(params.get('contrast'));
+        if (!isNaN(contrast) && contrast >= 1 && contrast <= 4.5) {
+          setConstraints((prev) => ({ ...prev, minContrast: contrast }));
+        }
+      }
+      if (params.has('dark')) {
+        setConstraints((prev) => ({ ...prev, darkModeFriendly: params.get('dark') === '1' }));
+      }
+      if (params.has('vision')) {
+        const vision = params.get('vision');
+        if (['normal', 'protanopia', 'deuteranopia', 'tritanopia', 'achromatopsia'].includes(vision)) {
+          setColorBlindMode(vision);
+        }
+      }
     };
 
     parseUrlState();
@@ -198,27 +215,15 @@ function ColorGenerator() {
 
         if (generationMode !== 'auto') params.set('mode', generationMode);
         if (constraints.mood !== 'any') params.set('mood', constraints.mood);
-        if (constraints.minContrast !== 1.5)
-          params.set('contrast', constraints.minContrast.toString());
+        if (constraints.minContrast !== 1.5) params.set('contrast', constraints.minContrast.toString());
         if (constraints.darkModeFriendly) params.set('dark', '1');
         if (colorBlindMode !== 'normal') params.set('vision', colorBlindMode);
 
         const queryString = params.toString();
-        return `${window.location.origin}/${hexes}${
-          queryString ? '?' + queryString : ''
-        }`;
+        return `${window.location.origin}/${hexes}${queryString ? '?' + queryString : ''}`;
       },
     };
-  }, [
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    colors,
-    generationMode,
-    constraints,
-    colorBlindMode,
-  ]);
+  }, [undo, redo, canUndo, canRedo, colors, generationMode, constraints, colorBlindMode]);
 
   // Keyboard shortcuts (only on generator page)
   useEffect(() => {
@@ -253,6 +258,24 @@ function ColorGenerator() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo, colors.length, generationMode, constraints, currentPage]);
+
+    // Update URL whenever colors change
+  useEffect(() => {
+    const hexes = colors.map((c) => c.hex.replace('#', '')).join('-');
+    const params = new URLSearchParams();
+
+    if (generationMode !== 'auto') params.set('mode', generationMode);
+    if (constraints.mood !== 'any') params.set('mood', constraints.mood);
+    if (constraints.minContrast !== 1.5) params.set('contrast', constraints.minContrast.toString());
+    if (constraints.darkModeFriendly) params.set('dark', '1');
+    if (colorBlindMode !== 'normal') params.set('vision', colorBlindMode);
+
+    const queryString = params.toString();
+    const newUrl = `/${hexes}${queryString ? '?' + queryString : ''}`;
+    
+    // Update URL without causing a page reload
+    window.history.replaceState({}, '', newUrl);
+  }, [colors, generationMode, constraints, colorBlindMode]);
 
   const generatePalette = (count = 5) => {
     const lockedColors = colors.filter((c) => c.locked);
