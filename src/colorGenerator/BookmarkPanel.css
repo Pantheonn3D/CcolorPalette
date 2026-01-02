@@ -149,7 +149,7 @@
   }
   
   .bookmark-step span:last-child {
-    font-size: var(--font-sm);
+    font-size: var(--font-sm); 
     color: #666;
     line-height: 1.5;
     padding-top: 2px;
