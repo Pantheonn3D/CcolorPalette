@@ -217,3 +217,23 @@ button {
     transform: rotate(180deg) translateY(3px);
   }
 }
+
+/* Nav Chevron - Mobile adjustments */
+@media (max-width: 768px) {
+  .nav-chevron {
+    z-index: 50;
+    bottom: 12px;
+    padding: 6px 12px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .nav-chevron-label {
+    font-size: 10px;
+  }
+
+  .nav-chevron.panels-open {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(20px);
+  }
+}

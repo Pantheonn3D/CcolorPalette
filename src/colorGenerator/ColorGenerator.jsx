@@ -8,6 +8,13 @@ import {
   GripVertical,
   Check,
   ChevronDown,
+  Undo2,
+  Redo2,
+  Sparkles,
+  Eye,
+  Clock,
+  Upload,
+  Bookmark,
 } from 'lucide-react';
 import Header from '../header/Header';
 import MethodPanel from './MethodPanel';
@@ -35,7 +42,17 @@ const createColorObjects = (hexArray) =>
 
 const MAX_HISTORY = 50;
 const MAX_COLORS = 8;
-const MAX_OPEN_PANELS = 3;
+
+// Helper to detect mobile view
+const isMobileView = () => window.innerWidth <= 768;
+
+// Dynamic max panels based on screen size
+const getMaxOpenPanels = () => {
+  if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+    return 1;
+  }
+  return 3;
+};
 
 function ColorGenerator() {
   // Page state (0 = generator, 1 = landing)
@@ -85,9 +102,10 @@ function ColorGenerator() {
       if (prev.includes(panelName)) {
         return prev.filter((p) => p !== panelName);
       } else {
+        const maxPanels = getMaxOpenPanels();
         let newPanels = [...prev, panelName];
-        if (newPanels.length > MAX_OPEN_PANELS) {
-          newPanels = newPanels.slice(1);
+        if (newPanels.length > maxPanels) {
+          newPanels = newPanels.slice(-maxPanels);
         }
         return newPanels;
       }
@@ -152,37 +170,32 @@ function ColorGenerator() {
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
-  // Parse URL on mount - only for shared links, not reloads
+  // Parse URL on mount
   useEffect(() => {
     const parseUrlState = () => {
       const path = window.location.pathname.slice(1);
       const params = new URLSearchParams(window.location.search);
 
-      // Check if this is a page reload or a fresh navigation
       const navEntries = performance.getEntriesByType('navigation');
       const isReload = navEntries.length > 0 && navEntries[0].type === 'reload';
-      
-      // Also check sessionStorage to see if user was already on the site
       const wasAlreadyHere = sessionStorage.getItem('ccolorpalette_session');
-      
-      // If it's a reload or user was already here, start fresh
+
       if (isReload || wasAlreadyHere) {
-        // Clear URL to root
         window.history.replaceState({}, '', '/');
-        // Mark that we've been here
         sessionStorage.setItem('ccolorpalette_session', 'true');
-        return; // Use default generated colors
+        return;
       }
 
-      // Mark that user is now on the site
       sessionStorage.setItem('ccolorpalette_session', 'true');
 
-      // Parse colors from path (only for fresh navigation/shared links)
       if (path && path.length > 0) {
-        const hexCodes = path.split('-').map((h) => {
-          const cleaned = h.toUpperCase().replace(/[^0-9A-F]/g, '');
-          return cleaned.length === 6 ? `#${cleaned}` : null;
-        }).filter(Boolean);
+        const hexCodes = path
+          .split('-')
+          .map((h) => {
+            const cleaned = h.toUpperCase().replace(/[^0-9A-F]/g, '');
+            return cleaned.length === 6 ? `#${cleaned}` : null;
+          })
+          .filter(Boolean);
 
         if (hexCodes.length >= 2) {
           const initialColors = hexCodes.map((hex) => ({
@@ -195,10 +208,11 @@ function ColorGenerator() {
         }
       }
 
-      // Parse settings from query params
       if (params.has('mode')) {
         const mode = params.get('mode');
-        if (['auto', 'mono', 'analogous', 'complementary', 'splitComplementary', 'triadic'].includes(mode)) {
+        if (
+          ['auto', 'mono', 'analogous', 'complementary', 'splitComplementary', 'triadic'].includes(mode)
+        ) {
           setGenerationMode(mode);
         }
       }
@@ -215,7 +229,10 @@ function ColorGenerator() {
         }
       }
       if (params.has('dark')) {
-        setConstraints((prev) => ({ ...prev, darkModeFriendly: params.get('dark') === '1' }));
+        setConstraints((prev) => ({
+          ...prev,
+          darkModeFriendly: params.get('dark') === '1',
+        }));
       }
       if (params.has('vision')) {
         const vision = params.get('vision');
@@ -227,7 +244,7 @@ function ColorGenerator() {
 
     parseUrlState();
   }, []);
-  
+
   // Update chromaAPI
   useEffect(() => {
     window.chromaAPI = {
@@ -247,23 +264,52 @@ function ColorGenerator() {
         if (colorBlindMode !== 'normal') params.set('vision', colorBlindMode);
 
         const queryString = params.toString();
-        return `${window.location.origin}/${hexes}${
-          queryString ? '?' + queryString : ''
-        }`;
+        return `${window.location.origin}/${hexes}${queryString ? '?' + queryString : ''}`;
       },
     };
-  }, [
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    colors,
-    generationMode,
-    constraints,
-    colorBlindMode,
-  ]);
+  }, [undo, redo, canUndo, canRedo, colors, generationMode, constraints, colorBlindMode]);
 
-  // Keyboard shortcuts (only on generator page)
+  const generatePalette = useCallback(
+    (count = 5) => {
+      const lockedColors = colors.filter((c) => c.locked);
+      const unlockedCount = count - lockedColors.length;
+
+      if (unlockedCount <= 0) return;
+
+      const newPalette = generateRandomPalette(generationMode, unlockedCount, constraints);
+      const newColors = newPalette.map((hex) => ({
+        id: generateId(),
+        hex,
+        locked: false,
+      }));
+
+      if (lockedColors.length === 0) {
+        updateColors(newColors);
+        return;
+      }
+
+      const result = [];
+      let newIndex = 0;
+      colors.forEach((c) => {
+        if (c.locked) {
+          result.push({ ...c });
+        } else if (newIndex < newColors.length) {
+          result.push(newColors[newIndex]);
+          newIndex++;
+        }
+      });
+      while (newIndex < newColors.length) {
+        result.push(newColors[newIndex]);
+        newIndex++;
+      }
+
+      updateColors(result);
+      setNewColorId(null);
+    },
+    [colors, generationMode, constraints, updateColors]
+  );
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (currentPage !== 0) return;
@@ -281,10 +327,7 @@ function ColorGenerator() {
         e.preventDefault();
         undo();
       }
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        (e.key === 'y' || (e.key === 'z' && e.shiftKey))
-      ) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
         redo();
       }
@@ -295,7 +338,7 @@ function ColorGenerator() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, colors.length, generationMode, constraints, currentPage]);
+  }, [undo, redo, colors.length, generatePalette, currentPage]);
 
   // Update URL whenever colors change
   useEffect(() => {
@@ -314,47 +357,6 @@ function ColorGenerator() {
 
     window.history.replaceState({}, '', newUrl);
   }, [colors, generationMode, constraints, colorBlindMode]);
-
-  const generatePalette = (count = 5) => {
-    const lockedColors = colors.filter((c) => c.locked);
-    const unlockedCount = count - lockedColors.length;
-
-    if (unlockedCount <= 0) return;
-
-    const newPalette = generateRandomPalette(
-      generationMode,
-      unlockedCount,
-      constraints
-    );
-    const newColors = newPalette.map((hex) => ({
-      id: generateId(),
-      hex,
-      locked: false,
-    }));
-
-    if (lockedColors.length === 0) {
-      updateColors(newColors);
-      return;
-    }
-
-    const result = [];
-    let newIndex = 0;
-    colors.forEach((c) => {
-      if (c.locked) {
-        result.push({ ...c });
-      } else if (newIndex < newColors.length) {
-        result.push(newColors[newIndex]);
-        newIndex++;
-      }
-    });
-    while (newIndex < newColors.length) {
-      result.push(newColors[newIndex]);
-      newIndex++;
-    }
-
-    updateColors(result);
-    setNewColorId(null);
-  };
 
   const addColorAtIndex = (index) => {
     if (!canAddMoreColors) return;
@@ -386,9 +388,7 @@ function ColorGenerator() {
   };
 
   const toggleLock = (id) => {
-    updateColors(
-      colors.map((c) => (c.id === id ? { ...c, locked: !c.locked } : c))
-    );
+    updateColors(colors.map((c) => (c.id === id ? { ...c, locked: !c.locked } : c)));
   };
 
   const copyHex = async (id, hex) => {
@@ -401,58 +401,90 @@ function ColorGenerator() {
     }
   };
 
-  const getColumnWidth = useCallback(() => {
+  // Calculate size by measuring actual elements
+  const getColumnSize = useCallback(() => {
     if (!containerRef.current) return 0;
 
-    let panelWidth = 0;
-    if (isMethodOpen) panelWidth += 240;
-    if (isA11yOpen) panelWidth += 280;
-    if (isHistoryOpen) panelWidth += 260;
-    if (isExportOpen) panelWidth += 300;
-    if (isBookmarkOpen) panelWidth += 280;
+    const firstColumn = containerRef.current.querySelector('.color-column');
+    if (firstColumn) {
+      if (isMobileView()) {
+        return firstColumn.offsetHeight;
+      } else {
+        return firstColumn.offsetWidth;
+      }
+    }
 
-    const availableWidth = containerRef.current.offsetWidth - panelWidth;
-    return availableWidth / colors.length;
-  }, [
-    colors.length,
-    isMethodOpen,
-    isA11yOpen,
-    isHistoryOpen,
-    isExportOpen,
-    isBookmarkOpen,
-  ]);
+    if (isMobileView()) {
+      const containerHeight = containerRef.current.offsetHeight;
+      const headerHeight = 56;
+      return (containerHeight - headerHeight) / colors.length;
+    } else {
+      let panelWidth = 0;
+      if (isMethodOpen) panelWidth += 240;
+      if (isA11yOpen) panelWidth += 280;
+      if (isHistoryOpen) panelWidth += 260;
+      if (isExportOpen) panelWidth += 300;
+      if (isBookmarkOpen) panelWidth += 280;
 
+      const availableWidth = containerRef.current.offsetWidth - panelWidth;
+      return availableWidth / colors.length;
+    }
+  }, [colors.length, isMethodOpen, isA11yOpen, isHistoryOpen, isExportOpen, isBookmarkOpen]);
+
+  // Handle both mouse and touch, both orientations
   const handleDragStart = (e, id, index) => {
-    e.preventDefault();
-    const columnWidth = getColumnWidth();
+    if (e.type === 'touchstart') {
+      e.preventDefault();
+    }
+
+    const columnSize = getColumnSize();
+    const isMobile = isMobileView();
+
+    let clientPos;
+    if (e.type === 'touchstart') {
+      clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
+    } else {
+      e.preventDefault();
+      clientPos = isMobile ? e.clientY : e.clientX;
+    }
 
     setDragState({
       id,
       startIndex: index,
       currentIndex: index,
-      startX: e.clientX,
-      currentX: e.clientX,
-      columnWidth,
+      startPos: clientPos,
+      currentPos: clientPos,
+      columnSize,
+      isMobile,
     });
   };
 
+  // Handle movement in correct direction
   const handleMouseMove = useCallback(
     (e) => {
       if (!dragState || isSnapping) return;
 
-      const { startIndex, columnWidth } = dragState;
-      let deltaX = e.clientX - dragState.startX;
+      const { startIndex, columnSize, isMobile } = dragState;
 
-      const maxLeftOffset = -startIndex * columnWidth;
-      const maxRightOffset = (colors.length - 1 - startIndex) * columnWidth;
-      deltaX = Math.max(maxLeftOffset, Math.min(maxRightOffset, deltaX));
+      let clientPos;
+      if (e.type === 'touchmove') {
+        clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
+      } else {
+        clientPos = isMobile ? e.clientY : e.clientX;
+      }
 
-      const indexOffset = Math.round(deltaX / columnWidth);
-      const newIndex = startIndex + indexOffset;
+      let delta = clientPos - dragState.startPos;
+
+      const maxNegativeOffset = -startIndex * columnSize;
+      const maxPositiveOffset = (colors.length - 1 - startIndex) * columnSize;
+      delta = Math.max(maxNegativeOffset, Math.min(maxPositiveOffset, delta));
+
+      const indexOffset = Math.round(delta / columnSize);
+      const newIndex = Math.max(0, Math.min(colors.length - 1, startIndex + indexOffset));
 
       setDragState((prev) => ({
         ...prev,
-        currentX: dragState.startX + deltaX,
+        currentPos: dragState.startPos + delta,
         currentIndex: newIndex,
       }));
     },
@@ -477,38 +509,61 @@ function ColorGenerator() {
     }, 250);
   }, [dragState, colors, updateColors]);
 
+  // Event listeners for both mouse and touch
   useEffect(() => {
     if (dragState) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      const handleMove = (e) => {
+        if (e.type === 'touchmove') {
+          e.preventDefault();
+        }
+        handleMouseMove(e);
+      };
+
+      const handleEnd = () => {
+        handleMouseUp();
+      };
+
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleEnd);
+      window.addEventListener('touchmove', handleMove, { passive: false });
+      window.addEventListener('touchend', handleEnd);
+      window.addEventListener('touchcancel', handleEnd);
+
       document.body.style.cursor = 'grabbing';
+      document.body.style.overflow = 'hidden';
+
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('mousemove', handleMove);
+        window.removeEventListener('mouseup', handleEnd);
+        window.removeEventListener('touchmove', handleMove);
+        window.removeEventListener('touchend', handleEnd);
+        window.removeEventListener('touchcancel', handleEnd);
         document.body.style.cursor = '';
+        document.body.style.overflow = '';
       };
     }
   }, [dragState, handleMouseMove, handleMouseUp]);
 
+  // Use correct transform direction based on orientation
   const getColumnStyle = (index, id) => {
     if (!dragState) return {};
 
-    const { startIndex, currentIndex, startX, currentX, columnWidth } =
-      dragState;
+    const { startIndex, currentIndex, startPos, currentPos, columnSize, isMobile } = dragState;
     const isDragged = id === dragState.id;
+    const transformProp = isMobile ? 'translateY' : 'translateX';
 
     if (isDragged) {
       if (isSnapping) {
-        const snapOffset = (currentIndex - startIndex) * columnWidth;
+        const snapOffset = (currentIndex - startIndex) * columnSize;
         return {
-          transform: `translateX(${snapOffset}px)`,
+          transform: `${transformProp}(${snapOffset}px)`,
           zIndex: 100,
           transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
         };
       } else {
-        const offset = currentX - startX;
+        const offset = currentPos - startPos;
         return {
-          transform: `translateX(${offset}px)`,
+          transform: `${transformProp}(${offset}px)`,
           zIndex: 100,
           transition: 'none',
         };
@@ -523,8 +578,7 @@ function ColorGenerator() {
     }
 
     return {
-      transform:
-        shift !== 0 ? `translateX(${shift * columnWidth}px)` : 'translateX(0)',
+      transform: shift !== 0 ? `${transformProp}(${shift * columnSize}px)` : `${transformProp}(0)`,
       transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
     };
   };
@@ -537,9 +591,7 @@ function ColorGenerator() {
   return (
     <div className="app-wrapper">
       {/* Generator Page */}
-      <div
-        className={`page-section ${currentPage === 0 ? 'visible' : 'hidden'}`}
-      >
+      <div className={`page-section ${currentPage === 0 ? 'visible' : 'hidden'}`}>
         <Header
           canUndo={canUndo}
           canRedo={canRedo}
@@ -560,6 +612,69 @@ function ColorGenerator() {
         />
 
         <main className="generator-container" ref={containerRef}>
+          {/* Mobile Header Row */}
+          <div className="mobile-header">
+            <button className="mobile-logo" onClick={goToGenerator}>
+              <div className="mobile-logo-mark">
+                {colors.slice(0, 3).map((color, i) => (
+                  <span
+                    key={i}
+                    className="mobile-logo-swatch"
+                    style={{ backgroundColor: color.hex }}
+                  />
+                ))}
+              </div>
+            </button>
+
+            <button className="mobile-hint" onClick={() => generatePalette(colors.length)}>
+              Tap to generate
+            </button>
+
+            <div className="mobile-actions">
+              <button
+                className={`mobile-icon-btn ${!canUndo ? 'disabled' : ''}`}
+                onClick={undo}
+                disabled={!canUndo}
+              >
+                <Undo2 size={18} />
+              </button>
+              <button
+                className={`mobile-icon-btn ${!canRedo ? 'disabled' : ''}`}
+                onClick={redo}
+                disabled={!canRedo}
+              >
+                <Redo2 size={18} />
+              </button>
+
+              <div className="mobile-separator" />
+
+              <button
+                className={`mobile-icon-btn ${isMethodOpen ? 'active' : ''}`}
+                onClick={() => togglePanel('method')}
+              >
+                <Sparkles size={18} />
+              </button>
+              <button
+                className={`mobile-icon-btn ${isA11yOpen ? 'active' : ''}`}
+                onClick={() => togglePanel('a11y')}
+              >
+                <Eye size={18} />
+              </button>
+              <button
+                className={`mobile-icon-btn ${isHistoryOpen ? 'active' : ''}`}
+                onClick={() => togglePanel('history')}
+              >
+                <Clock size={18} />
+              </button>
+              <button
+                className={`mobile-icon-btn ${isExportOpen ? 'active' : ''}`}
+                onClick={() => togglePanel('export')}
+              >
+                <Upload size={18} />
+              </button>
+            </div>
+          </div>
+
           {colors.map((color, index) => {
             const displayHex = getDisplayColor(color.hex);
             const textColor = getContrastColor(displayHex);
@@ -626,6 +741,7 @@ function ColorGenerator() {
                       title="Drag to reorder"
                       style={{ color: textColor }}
                       onMouseDown={(e) => handleDragStart(e, color.id, index)}
+                      onTouchStart={(e) => handleDragStart(e, color.id, index)}
                     >
                       <GripVertical size={20} />
                     </div>
@@ -642,31 +758,26 @@ function ColorGenerator() {
                   </div>
 
                   {color.locked && (
-                    <div
-                      className="lock-indicator"
-                      style={{ color: textColor }}
-                    >
+                    <div className="lock-indicator" style={{ color: textColor }}>
                       <Lock size={16} />
                     </div>
                   )}
                 </div>
 
-                {index < colors.length - 1 &&
-                  !dragState &&
-                  canAddMoreColors && (
-                    <div className="addColor">
-                      <button
-                        className="addBtn"
-                        onClick={(e) => {
-                          addColorAtIndex(index);
-                          e.currentTarget.blur();
-                        }}
-                        aria-label="Add color"
-                      >
-                        <Plus size={24} strokeWidth={2.5} color="#161616" />
-                      </button>
-                    </div>
-                  )}
+                {index < colors.length - 1 && !dragState && canAddMoreColors && (
+                  <div className="addColor">
+                    <button
+                      className="addBtn"
+                      onClick={(e) => {
+                        addColorAtIndex(index);
+                        e.currentTarget.blur();
+                      }}
+                      aria-label="Add color"
+                    >
+                      <Plus size={24} strokeWidth={2.5} color="#161616" />
+                    </button>
+                  </div>
+                )}
               </React.Fragment>
             );
           })}
@@ -709,22 +820,17 @@ function ColorGenerator() {
           />
         </main>
 
-        {/* Chevron to landing - only visible on generator page */}
-        <button className="nav-chevron" onClick={goToLanding}>
+        {/* Chevron to landing */}
+        <button className={`nav-chevron ${openPanels.length > 0 ? 'panels-open' : ''}`} onClick={goToLanding}>
           <span className="nav-chevron-label">About</span>
           <ChevronDown size={16} className="nav-chevron-icon" />
         </button>
       </div>
 
       {/* Landing Page */}
-      <div
-        className={`page-section landing-page ${
-          currentPage === 1 ? 'visible' : 'hidden'
-        }`}
-      >
+      <div className={`page-section landing-page ${currentPage === 1 ? 'visible' : 'hidden'}`}>
         <LandingContent onBackToGenerator={goToGenerator} />
 
-        {/* Chevron back - only visible on landing page */}
         <button className="nav-chevron up on-light" onClick={goToGenerator}>
           <ChevronDown size={16} className="nav-chevron-icon" />
           <span className="nav-chevron-label">Generator</span>

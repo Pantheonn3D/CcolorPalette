@@ -1,3 +1,4 @@
+import { MousePointer2, Lock, GripVertical, Copy } from 'lucide-react';
 import './LandingContent.css';
 
 function LandingContent({ onBackToGenerator }) {
@@ -22,8 +23,13 @@ function LandingContent({ onBackToGenerator }) {
             <div className="guide-step-number">1</div>
             <h3>Generate & Customize</h3>
             <p>
-              Press <kbd>Space</kbd> to generate a new palette. Choose your
-              harmony mode (monochromatic, analogous, complementary, etc.) and
+              <span className="desktop-only">
+                Press <kbd>Space</kbd> to generate a new palette.
+              </span>
+              <span className="mobile-only">
+                Tap "Tap to generate" to create a new palette.
+              </span>
+              {' '}Choose your harmony mode (monochromatic, analogous, complementary, etc.) and
               set the mood to get exactly the colors you need.
             </p>
           </div>
@@ -61,8 +67,13 @@ function LandingContent({ onBackToGenerator }) {
             <h3>Fine-tune Your Palette</h3>
             <p>
               Lock colors you love, add new colors between existing ones, and
-              drag to reorder. Every action is undoable with <kbd>Ctrl</kbd>+
-              <kbd>Z</kbd>.
+              drag to reorder.
+              <span className="desktop-only">
+                {' '}Every action is undoable with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+              </span>
+              <span className="mobile-only">
+                {' '}Use the undo button to revert any changes.
+              </span>
             </p>
           </div>
           <div className="guide-step-image">
@@ -151,8 +162,8 @@ function LandingContent({ onBackToGenerator }) {
         </article>
       </div>
 
-      {/* Keyboard Shortcuts */}
-      <div className="landing-shortcuts">
+      {/* Keyboard Shortcuts - Desktop Only */}
+      <div className="landing-shortcuts desktop-only">
         <h2>Keyboard Shortcuts</h2>
         <div className="shortcuts-grid">
           <div className="shortcut">
@@ -174,11 +185,51 @@ function LandingContent({ onBackToGenerator }) {
         </div>
       </div>
 
+      {/* Quick Tips - Mobile Only */}
+      <div className="landing-tips mobile-only">
+        <h2>Quick Tips</h2>
+        <div className="tips-list">
+          <div className="tip">
+            <div className="tip-icon">
+              <MousePointer2 size={18} />
+            </div>
+            <span>Tap "Tap to generate" for new colors</span>
+          </div>
+          <div className="tip">
+            <div className="tip-icon">
+              <Lock size={18} />
+            </div>
+            <span>Lock colors you want to keep</span>
+          </div>
+          <div className="tip">
+            <div className="tip-icon">
+              <GripVertical size={18} />
+            </div>
+            <span>Drag to reorder colors</span>
+          </div>
+          <div className="tip">
+            <div className="tip-icon">
+              <Copy size={18} />
+            </div>
+            <span>Tap hex code to copy</span>
+          </div>
+        </div>
+      </div>
+
       {/* CTA */}
       <div className="landing-cta">
-        <p>
+        {/* Desktop CTA */}
+        <p className="desktop-only">
           Press <kbd>Space</kbd> to generate your first accessible color
           palette.
+          <br />
+          <span className="cta-subtext">
+            Free, instant, no signup required.
+          </span>
+        </p>
+        {/* Mobile CTA */}
+        <p className="mobile-only">
+          Tap to generate your first accessible color palette.
           <br />
           <span className="cta-subtext">
             Free, instant, no signup required.
@@ -191,7 +242,7 @@ function LandingContent({ onBackToGenerator }) {
 
       {/* Footer */}
       <footer className="landing-footer">
-        <p>© 2026 CColorPalette</p>
+        <p>© 2025 CColorPalette</p>
         <p className="footer-tagline">
           Made for designers and developers who care about accessibility.
         </p>

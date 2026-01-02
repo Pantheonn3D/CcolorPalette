@@ -16,7 +16,6 @@
   padding-bottom: 80px;
   position: relative;
   min-width: 0;
-  /* Smooth squeeze when history opens */
   transition: flex 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   user-select: none;
 }
@@ -181,7 +180,6 @@
   transform: scale(0.95);
 }
 
-/* Copy feedback */
 .color-hex.copied {
   animation: copyBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -320,5 +318,196 @@
   }
   100% {
     transform: scale(1);
+  }
+}
+
+/* ========== MOBILE HEADER (hidden on desktop) ========== */
+.mobile-header {
+  display: none;
+}
+
+/* ========== MOBILE RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .generator-container {
+    flex-direction: column;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* Mobile Header */
+  .mobile-header {
+    display: flex;
+    width: 100%;
+    flex: 0 0 56px;
+    background: white;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    gap: 8px;
+    z-index: 10;
+  }
+
+  .mobile-logo {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    padding: 8px;
+    margin: -8px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .mobile-logo:active {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .mobile-logo-mark {
+    display: flex;
+    gap: 2px;
+  }
+
+  .mobile-logo-swatch {
+    width: 5px;
+    height: 16px;
+    border-radius: 2px;
+    transition: background-color 0.3s ease;
+  }
+
+  .mobile-hint {
+    font-size: 12px;
+    color: #999;
+    white-space: nowrap;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
+  }
+
+  .mobile-hint:active {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .mobile-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .mobile-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #444;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  .mobile-icon-btn:active:not(.disabled) {
+    background: #f0f0f0;
+    color: #161616;
+  }
+
+  .mobile-icon-btn.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  .mobile-icon-btn.active {
+    background: #f0f0f0;
+    color: #161616;
+  }
+
+  .mobile-separator {
+    width: 1px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.1);
+    margin: 0 4px;
+  }
+
+  /* Color rows */
+  .color-column {
+    width: 100%;
+    min-height: 0;
+    flex: 1 1 0;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 0 16px;
+    position: relative;
+    /* Reset any desktop styles */
+    height: auto !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Toolbar on left */
+  .color-toolbar {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    right: auto;
+    transform: translateY(-50%);
+    flex-direction: row;
+    gap: 4px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .color-column:hover .toolbar-btn {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .toolbar-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Hex code centered */
+  .color-content {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .color-hex {
+    font-size: 1.1rem;
+    min-width: auto;
+    padding: 8px 12px;
+    text-align: center;
+  }
+
+  .lock-indicator {
+    display: none;
+  }
+
+  /* IMPORTANT: Add buttons should not affect flex layout at all */
+  .addColor {
+    /* Take out of normal flow */
+    position: absolute;
+    width: 100%;
+    height: 40px;
+    left: 0;
+    /* Will be positioned via JS or we use a different approach */
+    margin: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  .addBtn {
+    width: 32px;
+    height: 32px;
+    pointer-events: auto;
   }
 }

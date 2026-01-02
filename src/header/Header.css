@@ -251,13 +251,22 @@
 }
 
 /* Mobile adjustments */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .bookmark-tooltip {
     right: -60px;
     min-width: 200px;
+    display: none;
   }
   
   .bookmark-tooltip::before {
     right: 76px;
+    display: none;
+  }
+}
+
+/* Hide floating header on mobile */
+@media (max-width: 768px) {
+  .header {
+    display: none;
   }
 }
