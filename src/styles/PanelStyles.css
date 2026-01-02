@@ -1,0 +1,555 @@
+/* ============================================
+   SHARED PANEL STYLES
+   ============================================ */
+
+/* Base Panel Column */
+.panel-column {
+  flex: 0 0 0px;
+  height: 100vh;
+  background: #f8f8f8;
+  overflow: hidden;
+  transition: flex-basis 0.5s cubic-bezier(0.34, 1.16, 0.64, 1);
+  position: relative;
+}
+
+/* Panel Inner Container */
+.panel-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: 80px;
+}
+
+/* Panel Header */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: #161616;
+}
+
+.panel-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #666;
+  transition: background-color 0.15s ease, color 0.15s ease,
+    transform 0.2s cubic-bezier(0.34, 1.76, 0.64, 1);
+  flex-shrink: 0;
+}
+
+.panel-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #161616;
+  transform: scale(1.1);
+}
+
+.panel-close:active {
+  transform: scale(0.9);
+}
+
+/* Panel Scrollable Content */
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+}
+
+/* Scrollbar Styling */
+.panel-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 2px;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
+}
+
+/* Section */
+.panel-section {
+  margin-bottom: 24px;
+}
+
+.panel-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Section Label */
+.panel-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.panel-label span {
+  color: #999;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Selection List Item */
+.panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.panel-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px;
+  background: white;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.panel-list-item:hover {
+  transform: scale(1.02);
+}
+
+.panel-list-item:active {
+  transform: scale(0.98);
+}
+
+.panel-list-item.selected {
+  border-color: #161616;
+}
+
+.panel-list-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.panel-list-item-title {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: #161616;
+}
+
+.panel-list-item-desc {
+  font-size: var(--font-xs);
+  color: #888;
+}
+
+.panel-check {
+  width: 8px;
+  height: 8px;
+  background: #161616;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Button Grid */
+.panel-btn-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.panel-btn {
+  padding: 8px 12px;
+  background: white;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.panel-btn:hover {
+  color: #161616;
+  background: #f0f0f0;
+}
+
+.panel-btn.active {
+  border-color: #161616;
+  color: #161616;
+  font-weight: 600;
+  background: white;
+}
+
+/* Slider */
+.panel-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  appearance: none;
+  background: #ddd;
+  cursor: pointer;
+  outline: none;
+}
+
+.panel-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #161616;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.panel-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.panel-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: var(--font-xs);
+  color: #999;
+}
+
+/* Toggle Button */
+.panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  background: white;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: #161616;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.panel-toggle:hover {
+  background: #f5f5f5;
+}
+
+.panel-toggle.active {
+  border-color: #161616;
+}
+
+.panel-toggle-indicator {
+  width: 40px;
+  height: 22px;
+  background: #ddd;
+  border-radius: 11px;
+  position: relative;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.panel-toggle-indicator::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.panel-toggle.active .panel-toggle-indicator {
+  background: #161616;
+}
+
+.panel-toggle.active .panel-toggle-indicator::after {
+  transform: translateX(18px);
+}
+
+/* Hint Text */
+.panel-hint {
+  font-size: var(--font-xs);
+  color: #888;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* Empty State */
+.panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 150px;
+  text-align: center;
+  color: #999;
+}
+
+.panel-empty p {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.panel-empty span {
+  font-size: var(--font-xs);
+}
+
+/* Card Item (for history/palettes) */
+.panel-card {
+  position: relative;
+  display: block;
+  padding: 0;
+  background: white;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.panel-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.panel-card:active {
+  transform: scale(0.98);
+}
+
+.panel-card.current {
+  border-color: #161616;
+}
+
+/* Badge */
+.panel-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.panel-badge.pass {
+  background: #ffffff;
+  color: #8f8f8f;
+}
+
+.panel-badge.fail {
+  background: #ffffff;
+  color: #161616;
+}
+
+/* Export Grid */
+.panel-export-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.panel-export-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 12px;
+  background: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.panel-export-btn:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.panel-export-btn:active {
+  transform: scale(0.97);
+}
+
+.panel-export-btn.copied {
+  background: #161616;
+  color: white;
+}
+
+.panel-export-btn-icon {
+  color: #161616;
+  transition: color 0.15s ease;
+}
+
+.panel-export-btn.copied .panel-export-btn-icon {
+  color: white;
+}
+
+.panel-export-btn-label {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: #161616;
+  transition: color 0.15s ease;
+}
+
+.panel-export-btn.copied .panel-export-btn-label {
+  color: white;
+}
+
+/* Preview Section */
+.panel-preview {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.panel-preview-colors {
+  display: flex;
+  height: 48px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.panel-preview-color {
+  flex: 1;
+  transition: flex 0.15s ease;
+}
+
+.panel-preview-colors:hover .panel-preview-color:hover {
+  flex: 1.5;
+}
+
+.panel-preview-hexes {
+  display: flex;
+  margin-top: 8px;
+}
+
+.panel-preview-hex {
+  flex: 1;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 500;
+  color: #666;
+  font-family: monospace;
+}
+
+/* Contrast Items */
+.panel-contrast-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: white;
+  border-radius: 8px;
+}
+
+.panel-contrast-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--font-sm);
+  flex-shrink: 0;
+}
+
+.panel-contrast-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.panel-contrast-hex {
+  font-size: var(--font-xs);
+  font-family: monospace;
+  color: #161616;
+}
+
+.panel-contrast-ratio {
+  font-size: var(--font-xs);
+  color: #888;
+}
+
+/* Adjacent Contrast */
+.panel-adjacent-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: white;
+  border-radius: 8px;
+}
+
+.panel-adjacent-swatches {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.panel-adjacent-swatches div {
+  width: 24px;
+  height: 32px;
+}
+
+.panel-adjacent-ratio {
+  flex: 1;
+  font-size: var(--font-xs);
+  color: #666;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .panel-inner {
+    padding-top: 70px;
+  }
+
+  .panel-header {
+    padding: 12px;
+    height: 48px;
+  }
+}

@@ -1,0 +1,324 @@
+.generator-container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  background: inherit;
+  overflow: hidden;
+}
+
+.color-column {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding-bottom: 80px;
+  position: relative;
+  min-width: 0;
+  /* Smooth squeeze when history opens */
+  transition: flex 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+/* Dragging states */
+.color-column.dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+.color-column.drag-over {
+  transform: scale(1.02);
+}
+
+.color-column.drag-over::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+/* ========== COLOR TOOLBAR ========== */
+.color-toolbar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.color-column:hover .color-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Staggered entrance for toolbar buttons */
+.color-column:hover .toolbar-btn {
+  animation: toolbarBtnPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
+}
+
+.color-column:hover .toolbar-btn:nth-child(1) {
+  animation-delay: 0ms;
+}
+.color-column:hover .toolbar-btn:nth-child(2) {
+  animation-delay: 40ms;
+}
+.color-column:hover .toolbar-btn:nth-child(3) {
+  animation-delay: 80ms;
+}
+.color-column:hover .toolbar-btn:nth-child(4) {
+  animation-delay: 120ms;
+}
+
+@keyframes toolbarBtnPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(10px);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, background-color 0.15s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toolbar-btn:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.15);
+}
+
+.toolbar-btn:active {
+  transform: scale(0.9);
+  transition: transform 0.1s ease;
+}
+
+.toolbar-btn.active {
+  opacity: 1;
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* ========== LOCK INDICATOR ========== */
+.lock-indicator {
+  position: absolute;
+  bottom: 120px;
+  opacity: 0.5;
+  animation: lockPulse 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes lockPulse {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+}
+
+/* ========== HEX CODE ========== */
+.color-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.color-hex {
+  font-size: var(--font-xl);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  min-width: 120px;
+  text-align: center;
+}
+
+.color-hex:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: scale(1.08);
+}
+
+.color-hex:active {
+  transform: scale(0.95);
+}
+
+/* Copy feedback */
+.color-hex.copied {
+  animation: copyBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes copyBounce {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ========== ADD COLOR BUTTON ========== */
+.addColor {
+  width: 80px;
+  margin-left: -40px;
+  margin-right: -40px;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.addBtn {
+  transform: scale(0.6);
+  opacity: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.addColor:hover .addBtn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.addBtn:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transform: scale(1.1) !important;
+}
+
+.addBtn:active {
+  transform: scale(0.9) !important;
+  transition: transform 0.1s ease;
+}
+
+/* ========== ENTERING ANIMATION ========== */
+.color-column.color-entering {
+  animation: columnExpand 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes columnExpand {
+  0% {
+    flex: 0.0001;
+  }
+  100% {
+    flex: 1;
+  }
+}
+
+.color-column.color-entering .color-content {
+  animation: contentReveal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
+  opacity: 0;
+}
+
+@keyframes contentReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.color-column.color-entering .color-hex {
+  animation: hexPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s forwards;
+  opacity: 0;
+}
+
+@keyframes hexPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ========== REMOVING ANIMATION ========== */
+.color-column.color-removing {
+  animation: columnCollapse 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes columnCollapse {
+  0% {
+    flex: 1;
+    opacity: 1;
+  }
+  100% {
+    flex: 0.0001;
+    opacity: 0;
+  }
+}
+
+/* ========== REORDER ANIMATION ========== */
+.color-column.reordering {
+  animation: reorderBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes reorderBounce {
+  0% {
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

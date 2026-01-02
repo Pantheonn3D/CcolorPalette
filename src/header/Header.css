@@ -1,0 +1,144 @@
+.header {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: white;
+  border-radius: 12px;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Update logoContainer to be a button */
+.logoContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  margin: -6px -2px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.logoContainer:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.logoMark {
+  display: flex;
+  gap: 3px;
+}
+
+.logoSwatch {
+  width: 6px;
+  height: 18px;
+  border-radius: 2px;
+  transition: background-color 0.3s ease;
+}
+
+.logoText {
+  font-weight: 700;
+  font-size: var(--font-base);
+  color: #161616;
+}
+
+.logoGradient {
+  background: linear-gradient(135deg, #6366f1 0%, #f755b9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hint {
+  font-size: var(--font-sm);
+  color: #999;
+  user-select: none;
+}
+
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #444;
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Prevent focus outline */
+  outline: none;
+}
+
+.iconBtn:hover:not(.disabled) {
+  background: #f0f0f0;
+  color: #161616;
+  transform: scale(1.05);
+}
+
+.iconBtn:active:not(.disabled) {
+  transform: scale(0.95);
+}
+
+.iconBtn.disabled {
+  opacity: 0.3;
+  user-select: none;
+}
+
+.iconBtn.active {
+  background: #f0f0f0;
+  color: #161616;
+}
+
+.iconBtn:focus-visible {
+  outline: 2px solid #161616;
+  outline-offset: 2px;
+}
+
+.separator {
+  width: 1px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 0 8px;
+}
+
+/* Same for other buttons */
+.toolbar-btn,
+.addBtn,
+.history-close,
+.palette-item,
+.modeIconBtn,
+.modeDropdownItem {
+  outline: none;
+}
+
+.toolbar-btn:focus-visible,
+.addBtn:focus-visible,
+.history-close:focus-visible,
+.palette-item:focus-visible,
+.modeIconBtn:focus-visible,
+.modeDropdownItem:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

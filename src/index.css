@@ -1,0 +1,219 @@
+/* Import at the very top */
+@import url('https://fonts.googleapis.com/css2?family=Elms+Sans:ital,wght@0,100..900;1,100..900&display=swap');
+
+:root {
+  --bg-dark: #161616;
+  --text-white: #ffffff;
+  --font-xs: 0.75rem;
+  --font-sm: 0.875rem;
+  --font-base: 1rem;
+  --font-lg: 1.25rem;
+  --font-xl: 1.5rem;
+  --font-2xl: 2rem;
+  --font-3xl: 3rem;
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-loose: 1.8;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  overflow: hidden;
+  height: 100%;
+}
+
+body {
+  font-family: 'Elms Sans', sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+  background-color: var(--bg-dark);
+  color: var(--text-white);
+  font-size: var(--font-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ONLY hide scrollbar on the main app wrapper - NOT panels */
+.app-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.app-wrapper {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Page wrapper */
+.app-wrapper {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Each page section */
+.page-section {
+  height: 100vh;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.page-section.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.page-section.visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Allow scrolling inside landing page */
+.page-section.landing-page {
+  overflow-y: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+h1 {
+  font-size: var(--font-3xl);
+  line-height: var(--leading-tight);
+}
+h2 {
+  font-size: var(--font-2xl);
+  line-height: var(--leading-tight);
+}
+h3 {
+  font-size: var(--font-xl);
+  line-height: var(--leading-tight);
+}
+small {
+  font-size: var(--font-sm);
+}
+
+button:focus {
+  outline: none;
+}
+button:focus-visible {
+  outline: 2px solid #161616;
+  outline-offset: 2px;
+}
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Nav Chevron - subtle, small */
+.nav-chevron {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+
+.nav-chevron:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-chevron-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nav-chevron-icon {
+  color: rgba(255, 255, 255, 0.7);
+  animation: chevronBounce 2s ease-in-out infinite;
+}
+
+.nav-chevron:hover .nav-chevron-icon {
+  animation: none;
+}
+
+@keyframes chevronBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+/* Light background variant */
+.nav-chevron.on-light {
+  opacity: 0.4;
+}
+
+.nav-chevron.on-light:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.nav-chevron.on-light .nav-chevron-label {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.nav-chevron.on-light .nav-chevron-icon {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.nav-chevron.on-light:hover .nav-chevron-label,
+.nav-chevron.on-light:hover .nav-chevron-icon {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+/* Up direction */
+.nav-chevron.up .nav-chevron-icon {
+  transform: rotate(180deg);
+}
+
+.nav-chevron.up .nav-chevron-icon {
+  animation: chevronBounceUp 2s ease-in-out infinite;
+}
+
+@keyframes chevronBounceUp {
+  0%,
+  100% {
+    transform: rotate(180deg) translateY(0);
+  }
+  50% {
+    transform: rotate(180deg) translateY(3px);
+  }
+}
