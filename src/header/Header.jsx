@@ -1,10 +1,10 @@
-import { Undo2, Redo2, Clock, Upload, Sparkles, Eye } from 'lucide-react';
+import { Undo2, Redo2, Clock, Upload, Sparkles, Eye, Bookmark } from 'lucide-react';
 import './Header.css';
 
-function Header({
-  canUndo,
-  canRedo,
-  onUndo,
+function Header({ 
+  canUndo, 
+  canRedo, 
+  onUndo, 
   onRedo,
   onToggleMethod,
   isMethodOpen,
@@ -14,23 +14,21 @@ function Header({
   isHistoryOpen,
   onToggleExport,
   isExportOpen,
+  onToggleBookmark,
+  isBookmarkOpen,
   logoColors = [],
-  onLogoClick,
+  onLogoClick
 }) {
   return (
     <header className="header">
       <div className="leftSection">
-        <button
-          className="logoContainer"
-          onClick={onLogoClick}
-          title="CColorPalette"
-        >
+        <button className="logoContainer" onClick={onLogoClick} title="CColorPalette">
           <div className="logoMark">
             {logoColors.slice(0, 3).map((color, i) => (
-              <span
+              <span 
                 key={i}
-                className="logoSwatch"
-                style={{ backgroundColor: color.hex }}
+                className="logoSwatch" 
+                style={{ backgroundColor: color.hex }} 
               />
             ))}
           </div>
@@ -60,7 +58,7 @@ function Header({
 
         <div className="separator" />
 
-        <button
+        <button 
           className={`iconBtn ${isMethodOpen ? 'active' : ''}`}
           onClick={onToggleMethod}
           title="Generation Method"
@@ -68,7 +66,7 @@ function Header({
           <Sparkles size={20} />
         </button>
 
-        <button
+        <button 
           className={`iconBtn ${isA11yOpen ? 'active' : ''}`}
           onClick={onToggleA11y}
           title="Accessibility"
@@ -76,7 +74,7 @@ function Header({
           <Eye size={20} />
         </button>
 
-        <button
+        <button 
           className={`iconBtn ${isHistoryOpen ? 'active' : ''}`}
           onClick={onToggleHistory}
           title="History"
@@ -84,12 +82,20 @@ function Header({
           <Clock size={20} />
         </button>
 
-        <button
+        <button 
           className={`iconBtn ${isExportOpen ? 'active' : ''}`}
           onClick={onToggleExport}
           title="Export"
         >
           <Upload size={20} />
+        </button>
+
+        <button 
+          className={`iconBtn ${isBookmarkOpen ? 'active' : ''}`}
+          onClick={onToggleBookmark}
+          title="Bookmark"
+        >
+          <Bookmark size={20} />
         </button>
       </div>
     </header>

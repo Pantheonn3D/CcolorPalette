@@ -14,6 +14,7 @@ import MethodPanel from './MethodPanel';
 import AccessibilityPanel from './AccessibilityPanel';
 import HistoryPanel from './HistoryPanel';
 import ExportPanel from './ExportPanel';
+import BookmarkPanel from './BookmarkPanel';
 import LandingContent from '../LandingContent';
 import './ColorGenerator.css';
 import {
@@ -101,8 +102,15 @@ function ColorGenerator() {
   const isA11yOpen = isPanelOpen('a11y');
   const isHistoryOpen = isPanelOpen('history');
   const isExportOpen = isPanelOpen('export');
+  const isBookmarkOpen = isPanelOpen('bookmark');
 
   const canAddMoreColors = colors.length < MAX_COLORS;
+
+  // Get current URL for bookmark panel
+  const getCurrentUrl = () => {
+    if (typeof window === 'undefined') return '';
+    return window.location.href;
+  };
 
   const updateColors = useCallback(
     (newColors) => {
@@ -144,16 +152,34 @@ function ColorGenerator() {
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
-  // Parse URL on mount
+  // Parse URL on mount - only for shared links, not reloads
   useEffect(() => {
     const parseUrlState = () => {
-      const path = window.location.pathname.slice(1); // Remove leading "/"
+      const path = window.location.pathname.slice(1);
       const params = new URLSearchParams(window.location.search);
 
-      // Parse colors from path (e.g., "457B68-B6D9D7-569CA1")
+      // Check if this is a page reload or a fresh navigation
+      const navEntries = performance.getEntriesByType('navigation');
+      const isReload = navEntries.length > 0 && navEntries[0].type === 'reload';
+      
+      // Also check sessionStorage to see if user was already on the site
+      const wasAlreadyHere = sessionStorage.getItem('ccolorpalette_session');
+      
+      // If it's a reload or user was already here, start fresh
+      if (isReload || wasAlreadyHere) {
+        // Clear URL to root
+        window.history.replaceState({}, '', '/');
+        // Mark that we've been here
+        sessionStorage.setItem('ccolorpalette_session', 'true');
+        return; // Use default generated colors
+      }
+
+      // Mark that user is now on the site
+      sessionStorage.setItem('ccolorpalette_session', 'true');
+
+      // Parse colors from path (only for fresh navigation/shared links)
       if (path && path.length > 0) {
         const hexCodes = path.split('-').map((h) => {
-          // Ensure proper format
           const cleaned = h.toUpperCase().replace(/[^0-9A-F]/g, '');
           return cleaned.length === 6 ? `#${cleaned}` : null;
         }).filter(Boolean);
@@ -201,7 +227,7 @@ function ColorGenerator() {
 
     parseUrlState();
   }, []);
-
+  
   // Update chromaAPI
   useEffect(() => {
     window.chromaAPI = {
@@ -215,15 +241,27 @@ function ColorGenerator() {
 
         if (generationMode !== 'auto') params.set('mode', generationMode);
         if (constraints.mood !== 'any') params.set('mood', constraints.mood);
-        if (constraints.minContrast !== 1.5) params.set('contrast', constraints.minContrast.toString());
+        if (constraints.minContrast !== 1.5)
+          params.set('contrast', constraints.minContrast.toString());
         if (constraints.darkModeFriendly) params.set('dark', '1');
         if (colorBlindMode !== 'normal') params.set('vision', colorBlindMode);
 
         const queryString = params.toString();
-        return `${window.location.origin}/${hexes}${queryString ? '?' + queryString : ''}`;
+        return `${window.location.origin}/${hexes}${
+          queryString ? '?' + queryString : ''
+        }`;
       },
     };
-  }, [undo, redo, canUndo, canRedo, colors, generationMode, constraints, colorBlindMode]);
+  }, [
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    colors,
+    generationMode,
+    constraints,
+    colorBlindMode,
+  ]);
 
   // Keyboard shortcuts (only on generator page)
   useEffect(() => {
@@ -259,21 +297,21 @@ function ColorGenerator() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo, colors.length, generationMode, constraints, currentPage]);
 
-    // Update URL whenever colors change
+  // Update URL whenever colors change
   useEffect(() => {
     const hexes = colors.map((c) => c.hex.replace('#', '')).join('-');
     const params = new URLSearchParams();
 
     if (generationMode !== 'auto') params.set('mode', generationMode);
     if (constraints.mood !== 'any') params.set('mood', constraints.mood);
-    if (constraints.minContrast !== 1.5) params.set('contrast', constraints.minContrast.toString());
+    if (constraints.minContrast !== 1.5)
+      params.set('contrast', constraints.minContrast.toString());
     if (constraints.darkModeFriendly) params.set('dark', '1');
     if (colorBlindMode !== 'normal') params.set('vision', colorBlindMode);
 
     const queryString = params.toString();
     const newUrl = `/${hexes}${queryString ? '?' + queryString : ''}`;
-    
-    // Update URL without causing a page reload
+
     window.history.replaceState({}, '', newUrl);
   }, [colors, generationMode, constraints, colorBlindMode]);
 
@@ -371,10 +409,18 @@ function ColorGenerator() {
     if (isA11yOpen) panelWidth += 280;
     if (isHistoryOpen) panelWidth += 260;
     if (isExportOpen) panelWidth += 300;
+    if (isBookmarkOpen) panelWidth += 280;
 
     const availableWidth = containerRef.current.offsetWidth - panelWidth;
     return availableWidth / colors.length;
-  }, [colors.length, isMethodOpen, isA11yOpen, isHistoryOpen, isExportOpen]);
+  }, [
+    colors.length,
+    isMethodOpen,
+    isA11yOpen,
+    isHistoryOpen,
+    isExportOpen,
+    isBookmarkOpen,
+  ]);
 
   const handleDragStart = (e, id, index) => {
     e.preventDefault();
@@ -507,6 +553,8 @@ function ColorGenerator() {
           isHistoryOpen={isHistoryOpen}
           onToggleExport={() => togglePanel('export')}
           isExportOpen={isExportOpen}
+          onToggleBookmark={() => togglePanel('bookmark')}
+          isBookmarkOpen={isBookmarkOpen}
           logoColors={colors}
           onLogoClick={goToGenerator}
         />
@@ -652,6 +700,12 @@ function ColorGenerator() {
             isOpen={isExportOpen}
             onClose={() => closePanel('export')}
             colors={colors}
+          />
+
+          <BookmarkPanel
+            isOpen={isBookmarkOpen}
+            onClose={() => closePanel('bookmark')}
+            currentUrl={getCurrentUrl()}
           />
         </main>
 
