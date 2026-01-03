@@ -28,9 +28,7 @@
 html {
   overflow: hidden;
   height: 100%;
-  /* Fix for mobile browsers */
-  height: -webkit-fill-available;
-  overscroll-behavior: none; /* Prevent pull-to-refresh */
+  overscroll-behavior: none;
 }
 
 body {
@@ -73,7 +71,6 @@ body {
 .app-wrapper {
   height: 100vh;
   height: 100dvh;
-  height: -webkit-fill-available;
   overflow: hidden;
 }
 
@@ -81,7 +78,6 @@ body {
 .page-section {
   height: 100vh;
   height: 100dvh;
-  height: -webkit-fill-available;
   width: 100%;
   position: absolute;
   top: 0;
