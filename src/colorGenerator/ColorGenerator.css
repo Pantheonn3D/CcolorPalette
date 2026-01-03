@@ -51,6 +51,97 @@
   pointer-events: none;
 }
 
+.colors-area {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.colors-area.stacked {
+  flex-direction: column;
+}
+
+/* Desktop stacking mode, colors only */
+.colors-area.stacked .color-column {
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  flex: 1 1 0;
+
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+
+  padding: 0 16px;
+  padding-bottom: 0;
+  position: relative;
+}
+
+.colors-area.stacked .color-toolbar {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  right: auto;
+  transform: translateY(-50%);
+  flex-direction: row;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+.colors-area.stacked .toolbar-btn {
+  width: 36px;
+  height: 36px;
+  opacity: 0.6;
+  animation: none;
+}
+
+.colors-area.stacked .color-column:hover .toolbar-btn {
+  animation: none;
+  opacity: 0.6;
+}
+
+.colors-area.stacked .color-content {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.colors-area.stacked .color-hex {
+  font-size: 1.1rem;
+  min-width: auto;
+  padding: 8px 12px;
+  text-align: right;
+}
+
+.colors-area.stacked .lock-indicator {
+  display: none;
+}
+
+/* Add button between stacked rows */
+.colors-area.stacked .addColor {
+  display: flex;
+  width: 100%;
+  height: 0;
+  flex: 0 0 0;
+  margin: 0;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+  overflow: visible;
+}
+
+.colors-area.stacked .addBtn {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  opacity: 0.2;
+  transform: scale(1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
 /* ========== COLOR TOOLBAR ========== */
 .color-toolbar {
   position: absolute;

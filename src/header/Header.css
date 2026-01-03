@@ -250,6 +250,58 @@
   color: white;
 }
 
+/* Compact desktop header when colors are stacked */
+.header.compact {
+  left: auto;
+  right: 20px;
+  width: max-content;
+  padding: 8px 10px;
+  justify-content: flex-end;
+}
+
+/* Hide the parts that make it wide */
+.header.compact .hint {
+  display: none;
+}
+
+.header.compact .logoText {
+  display: none;
+}
+
+/* Tighten spacing */
+.header.compact .leftSection {
+  gap: 8px;
+}
+
+.header.compact .rightSection {
+  gap: 2px;
+}
+
+.header.compact .separator {
+  margin: 0 6px;
+  height: 20px;
+}
+
+/* Slightly smaller buttons so it occupies less screen */
+.header.compact .iconBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+/* Keep the logo mark small */
+.header.compact .logoSwatch {
+  width: 5px;
+  height: 16px;
+}
+
+/* Make the logo button less “wide-feeling” */
+.header.compact .logoContainer {
+  padding: 6px;
+  margin: 0;
+}
+
+
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .bookmark-tooltip {

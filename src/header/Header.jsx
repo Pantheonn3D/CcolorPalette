@@ -1,10 +1,10 @@
 import { Undo2, Redo2, Clock, Upload, Sparkles, Eye, Bookmark } from 'lucide-react';
 import './Header.css';
 
-function Header({ 
-  canUndo, 
-  canRedo, 
-  onUndo, 
+function Header({
+  canUndo,
+  canRedo,
+  onUndo,
   onRedo,
   onToggleMethod,
   isMethodOpen,
@@ -17,7 +17,7 @@ function Header({
   onToggleBookmark,
   isBookmarkOpen,
   logoColors = [],
-  onLogoClick
+  onLogoClick,
 }) {
   return (
     <header className="header">

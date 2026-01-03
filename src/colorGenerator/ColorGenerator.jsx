@@ -42,8 +42,8 @@ const createColorObjects = (hexArray) =>
 
 const MAX_HISTORY = 50;
 const MAX_COLORS = 8;
+const MIN_COL_PX = 128;
 
-// Helper to detect mobile view
 const isMobileView = () => window.innerWidth <= 768;
 
 // Dynamic max panels based on screen size
@@ -55,6 +55,18 @@ const getMaxOpenPanels = () => {
 };
 
 function ColorGenerator() {
+  // Refs - moved inside component
+  const containerRef = useRef(null);
+  const colorsAreaRef = useRef(null);
+
+  // State for stacked colors layout - moved inside component
+  const [stackColors, setStackColors] = useState(false);
+
+  // Helper function to check vertical layout - now uses state properly
+  const isVerticalLayout = useCallback(() => {
+    return isMobileView() || stackColors;
+  }, [stackColors]);
+
   // Page state (0 = generator, 1 = landing)
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -88,7 +100,6 @@ function ColorGenerator() {
   // Drag states
   const [dragState, setDragState] = useState(null);
   const [isSnapping, setIsSnapping] = useState(false);
-  const containerRef = useRef(null);
 
   // Page navigation
   const goToGenerator = () => setCurrentPage(0);
@@ -406,15 +417,13 @@ function ColorGenerator() {
     if (!containerRef.current) return 0;
 
     const firstColumn = containerRef.current.querySelector('.color-column');
+    const vertical = isVerticalLayout();
+
     if (firstColumn) {
-      if (isMobileView()) {
-        return firstColumn.offsetHeight;
-      } else {
-        return firstColumn.offsetWidth;
-      }
+      return vertical ? firstColumn.offsetHeight : firstColumn.offsetWidth;
     }
 
-    if (isMobileView()) {
+    if (vertical) {
       const containerHeight = containerRef.current.offsetHeight;
       const headerHeight = 56;
       return (containerHeight - headerHeight) / colors.length;
@@ -429,7 +438,15 @@ function ColorGenerator() {
       const availableWidth = containerRef.current.offsetWidth - panelWidth;
       return availableWidth / colors.length;
     }
-  }, [colors.length, isMethodOpen, isA11yOpen, isHistoryOpen, isExportOpen, isBookmarkOpen]);
+  }, [
+    colors.length,
+    isMethodOpen,
+    isA11yOpen,
+    isHistoryOpen,
+    isExportOpen,
+    isBookmarkOpen,
+    isVerticalLayout,
+  ]);
 
   // Handle both mouse and touch, both orientations
   const handleDragStart = (e, id, index) => {
@@ -438,14 +455,14 @@ function ColorGenerator() {
     }
 
     const columnSize = getColumnSize();
-    const isMobile = isMobileView();
+    const vertical = isVerticalLayout();
 
     let clientPos;
     if (e.type === 'touchstart') {
-      clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
+      clientPos = vertical ? e.touches[0].clientY : e.touches[0].clientX;
     } else {
       e.preventDefault();
-      clientPos = isMobile ? e.clientY : e.clientX;
+      clientPos = vertical ? e.clientY : e.clientX;
     }
 
     setDragState({
@@ -455,7 +472,7 @@ function ColorGenerator() {
       startPos: clientPos,
       currentPos: clientPos,
       columnSize,
-      isMobile,
+      isMobile: vertical,
     });
   };
 
@@ -509,7 +526,7 @@ function ColorGenerator() {
     }, 250);
   }, [dragState, colors, updateColors]);
 
-  // Event listeners for both mouse and touch
+  // Event listeners for drag - FIXED: separated from nested useEffect
   useEffect(() => {
     if (dragState) {
       const handleMove = (e) => {
@@ -543,6 +560,33 @@ function ColorGenerator() {
       };
     }
   }, [dragState, handleMouseMove, handleMouseUp]);
+
+  // ResizeObserver for stacked layout detection - FIXED: now separate useEffect
+  useEffect(() => {
+    const el = colorsAreaRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const w = el.getBoundingClientRect().width;
+      const perCol = w / Math.max(1, colors.length);
+      setStackColors(perCol < MIN_COL_PX);
+    };
+
+    update();
+
+    let ro;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => update());
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', update);
+    }
+
+    return () => {
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', update);
+    };
+  }, [colors.length]);
 
   // Use correct transform direction based on orientation
   const getColumnStyle = (index, id) => {
@@ -614,7 +658,6 @@ function ColorGenerator() {
         <main className="generator-container" ref={containerRef}>
           {/* Mobile Header Row */}
           <div className="mobile-header">
-
             <button className="mobile-hint" onClick={() => generatePalette(colors.length)}>
               Tap to generate
             </button>
@@ -664,112 +707,117 @@ function ColorGenerator() {
             </div>
           </div>
 
-          {colors.map((color, index) => {
-            const displayHex = getDisplayColor(color.hex);
-            const textColor = getContrastColor(displayHex);
-            const isNew = color.id === newColorId;
-            const isRemoving = color.id === removingId;
-            const isCopied = copiedId === color.id;
-            const isDragging = dragState?.id === color.id;
-            const columnStyle = getColumnStyle(index, color.id);
+          <section
+            ref={colorsAreaRef}
+            className={`colors-area ${stackColors ? 'stacked' : ''}`}
+          >
+            {colors.map((color, index) => {
+              const displayHex = getDisplayColor(color.hex);
+              const textColor = getContrastColor(displayHex);
+              const isNew = color.id === newColorId;
+              const isRemoving = color.id === removingId;
+              const isCopied = copiedId === color.id;
+              const isDragging = dragState?.id === color.id;
+              const columnStyle = getColumnStyle(index, color.id);
 
-            return (
-              <React.Fragment key={color.id}>
-                <div
-                  className={`color-column ${isNew ? 'color-entering' : ''} ${
-                    isRemoving ? 'color-removing' : ''
-                  } ${isDragging ? 'is-dragging' : ''} ${
-                    dragState && !isDragging ? 'is-shifting' : ''
-                  }`}
-                  style={{ backgroundColor: displayHex, ...columnStyle }}
-                >
-                  <div className="color-toolbar" style={{ color: textColor }}>
-                    {colors.length > 2 && (
+              return (
+                <React.Fragment key={color.id}>
+                  <div
+                    className={`color-column ${isNew ? 'color-entering' : ''} ${
+                      isRemoving ? 'color-removing' : ''
+                    } ${isDragging ? 'is-dragging' : ''} ${
+                      dragState && !isDragging ? 'is-shifting' : ''
+                    }`}
+                    style={{ backgroundColor: displayHex, ...columnStyle }}
+                  >
+                    <div className="color-toolbar" style={{ color: textColor }}>
+                      {colors.length > 2 && (
+                        <button
+                          className="toolbar-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeColor(color.id);
+                            e.currentTarget.blur();
+                          }}
+                          title="Remove"
+                          style={{ color: textColor }}
+                        >
+                          <X size={20} />
+                        </button>
+                      )}
+
                       <button
                         className="toolbar-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          removeColor(color.id);
+                          copyHex(color.id, color.hex);
                           e.currentTarget.blur();
                         }}
-                        title="Remove"
+                        title="Copy hex"
                         style={{ color: textColor }}
                       >
-                        <X size={20} />
+                        {isCopied ? <Check size={20} /> : <Copy size={20} />}
                       </button>
-                    )}
 
-                    <button
-                      className="toolbar-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copyHex(color.id, color.hex);
-                        e.currentTarget.blur();
-                      }}
-                      title="Copy hex" 
-                      style={{ color: textColor }}
-                    >
-                      {isCopied ? <Check size={20} /> : <Copy size={20} />}
-                    </button>
+                      <button
+                        className={`toolbar-btn ${color.locked ? 'active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleLock(color.id);
+                          e.currentTarget.blur();
+                        }}
+                        title={color.locked ? 'Unlock' : 'Lock'}
+                        style={{ color: textColor }}
+                      >
+                        {color.locked ? <Lock size={20} /> : <Unlock size={20} />}
+                      </button>
 
-                    <button
-                      className={`toolbar-btn ${color.locked ? 'active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleLock(color.id);
-                        e.currentTarget.blur();
-                      }}
-                      title={color.locked ? 'Unlock' : 'Lock'}
-                      style={{ color: textColor }}
-                    >
-                      {color.locked ? <Lock size={20} /> : <Unlock size={20} />}
-                    </button>
-
-                    <div
-                      className="toolbar-btn drag-handle"
-                      title="Drag to reorder"
-                      style={{ color: textColor }}
-                      onMouseDown={(e) => handleDragStart(e, color.id, index)}
-                      onTouchStart={(e) => handleDragStart(e, color.id, index)}
-                    >
-                      <GripVertical size={20} />
+                      <div
+                        className="toolbar-btn drag-handle"
+                        title="Drag to reorder"
+                        style={{ color: textColor }}
+                        onMouseDown={(e) => handleDragStart(e, color.id, index)}
+                        onTouchStart={(e) => handleDragStart(e, color.id, index)}
+                      >
+                        <GripVertical size={20} />
+                      </div>
                     </div>
+
+                    <div className="color-content">
+                      <h2
+                        className={`color-hex ${isCopied ? 'copied' : ''}`}
+                        style={{ color: textColor }}
+                        onClick={() => copyHex(color.id, color.hex)}
+                      >
+                        {isCopied ? 'Copied!' : color.hex.replace('#', '')}
+                      </h2>
+                    </div>
+
+                    {color.locked && (
+                      <div className="lock-indicator" style={{ color: textColor }}>
+                        <Lock size={16} />
+                      </div>
+                    )}
                   </div>
 
-                  <div className="color-content">
-                    <h2
-                      className={`color-hex ${isCopied ? 'copied' : ''}`}
-                      style={{ color: textColor }}
-                      onClick={() => copyHex(color.id, color.hex)}
-                    >
-                      {isCopied ? 'Copied!' : color.hex.replace('#', '')}
-                    </h2>
-                  </div>
-
-                  {color.locked && (
-                    <div className="lock-indicator" style={{ color: textColor }}>
-                      <Lock size={16} />
+                  {index < colors.length - 1 && !dragState && canAddMoreColors && (
+                    <div className="addColor">
+                      <button
+                        className="addBtn"
+                        onClick={(e) => {
+                          addColorAtIndex(index);
+                          e.currentTarget.blur();
+                        }}
+                        aria-label="Add color"
+                      >
+                        <Plus size={24} strokeWidth={2.5} color="#161616" />
+                      </button>
                     </div>
                   )}
-                </div>
-
-                {index < colors.length - 1 && !dragState && canAddMoreColors && (
-                  <div className="addColor">
-                    <button
-                      className="addBtn"
-                      onClick={(e) => {
-                        addColorAtIndex(index);
-                        e.currentTarget.blur();
-                      }}
-                      aria-label="Add color"
-                    >
-                      <Plus size={24} strokeWidth={2.5} color="#161616" />
-                    </button>
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })}
+                </React.Fragment>
+              );
+            })}
+          </section>
 
           <MethodPanel
             isOpen={isMethodOpen}
