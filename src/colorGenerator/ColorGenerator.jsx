@@ -6,6 +6,9 @@ import {
   Lock,
   Unlock,
   GripVertical,
+  ArrowLeftRight,
+  ArrowDownUp,
+  SwatchBook,
   Check,
   ChevronDown,
   Undo2,
@@ -29,6 +32,7 @@ import {
   getContrastColor,
   generateBridgeColor,
   simulateColorBlindness,
+  generateShades,
 } from '../utils/colorUtils';
 
 const generateId = () => Math.random().toString(36).substring(2, 11);
@@ -66,6 +70,8 @@ function ColorGenerator() {
   const isVerticalLayout = useCallback(() => {
     return isMobileView() || stackColors;
   }, [stackColors]);
+
+  const DragIcon = isVerticalLayout() ? ArrowDownUp : ArrowLeftRight;
 
   // Page state (0 = generator, 1 = landing)
   const [currentPage, setCurrentPage] = useState(0);
@@ -139,6 +145,42 @@ function ColorGenerator() {
   const getCurrentUrl = () => {
     if (typeof window === 'undefined') return '';
     return window.location.href;
+  };
+
+  const [activeShadeId, setActiveShadeId] = useState(null);
+
+  // 1. NEW: Handle Tap/Click Outside (Best for Mobile convenience)
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      // If no picker is open, do nothing
+      if (!activeShadeId) return;
+
+      // If the click is INSIDE the picker, do nothing
+      if (e.target.closest('.shade-container')) return;
+
+      // Otherwise, close the picker
+      setActiveShadeId(null);
+    };
+
+    if (activeShadeId) {
+      // Use 'mousedown' for quicker response than 'click'
+      window.addEventListener('mousedown', handleClickOutside);
+      // Add 'touchstart' for better mobile support
+      window.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [activeShadeId]);
+
+  // 2. NEW: Handle Mouse Leave (Specific for PC requirement)
+  const handleMouseLeave = () => {
+    // Only apply "hover exit" logic on larger screens (Desktop)
+    if (window.innerWidth > 768) {
+      setActiveShadeId(null);
+    }
   };
 
   const updateColors = useCallback(
@@ -319,6 +361,19 @@ function ColorGenerator() {
     },
     [colors, generationMode, constraints, updateColors]
   );
+
+  const toggleShadePicker = (id) => {
+    setActiveShadeId(prev => (prev === id ? null : id));
+  };
+
+  const pickShade = (originalId, newHex) => {
+    // Replace the color in the history
+    const newColors = colors.map((c) =>
+      c.id === originalId ? { ...c, hex: newHex } : c
+    );
+    updateColors(newColors);
+    setActiveShadeId(null); // Close the picker
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -526,7 +581,7 @@ function ColorGenerator() {
     }, 250);
   }, [dragState, colors, updateColors]);
 
-  // Event listeners for drag - FIXED: separated from nested useEffect
+  // Event listeners for drag
   useEffect(() => {
     if (dragState) {
       const handleMove = (e) => {
@@ -561,7 +616,7 @@ function ColorGenerator() {
     }
   }, [dragState, handleMouseMove, handleMouseUp]);
 
-  // ResizeObserver for stacked layout detection - FIXED: now separate useEffect
+  // ResizeObserver for stacked layout detection
   useEffect(() => {
     const el = colorsAreaRef.current;
     if (!el) return;
@@ -714,11 +769,16 @@ function ColorGenerator() {
             {colors.map((color, index) => {
               const displayHex = getDisplayColor(color.hex);
               const textColor = getContrastColor(displayHex);
+
+              // Standard states
               const isNew = color.id === newColorId;
               const isRemoving = color.id === removingId;
               const isCopied = copiedId === color.id;
               const isDragging = dragState?.id === color.id;
               const columnStyle = getColumnStyle(index, color.id);
+
+              // Check if this column is in Shade Picker mode
+              const isShadePicking = activeShadeId === color.id;
 
               return (
                 <React.Fragment key={color.id}>
@@ -730,76 +790,125 @@ function ColorGenerator() {
                     }`}
                     style={{ backgroundColor: displayHex, ...columnStyle }}
                   >
-                    <div className="color-toolbar" style={{ color: textColor }}>
-                      {colors.length > 2 && (
+                    {/* 4. CONDITIONAL RENDERING: Shade Picker vs Standard Tools */}
+
+                    {isShadePicking ? (
+                      <div
+                        className="shade-container"
+                        onMouseLeave={handleMouseLeave}
+                      >
+                        {generateShades(color.hex, window.innerWidth <= 768 ? 6 : 20).map((shadeHex) => (
+                          <button
+                            key={shadeHex}
+                            className="shade-step"
+                            style={{ backgroundColor: shadeHex }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              pickShade(color.id, shadeHex);
+                            }}
+                            title={shadeHex}
+                          />
+                        ))}
                         <button
-                          className="toolbar-btn"
+                          className="shade-close-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            removeColor(color.id);
-                            e.currentTarget.blur();
+                            toggleShadePicker(null);
                           }}
-                          title="Remove"
-                          style={{ color: textColor }}
                         >
                           <X size={20} />
                         </button>
-                      )}
-
-                      <button
-                        className="toolbar-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyHex(color.id, color.hex);
-                          e.currentTarget.blur();
-                        }}
-                        title="Copy hex"
-                        style={{ color: textColor }}
-                      >
-                        {isCopied ? <Check size={20} /> : <Copy size={20} />}
-                      </button>
-
-                      <button
-                        className={`toolbar-btn ${color.locked ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleLock(color.id);
-                          e.currentTarget.blur();
-                        }}
-                        title={color.locked ? 'Unlock' : 'Lock'}
-                        style={{ color: textColor }}
-                      >
-                        {color.locked ? <Lock size={20} /> : <Unlock size={20} />}
-                      </button>
-
-                      <div
-                        className="toolbar-btn drag-handle"
-                        title="Drag to reorder"
-                        style={{ color: textColor }}
-                        onMouseDown={(e) => handleDragStart(e, color.id, index)}
-                        onTouchStart={(e) => handleDragStart(e, color.id, index)}
-                      >
-                        <GripVertical size={20} />
                       </div>
-                    </div>
+                    ) : (
+                      /* STANDARD CONTENT */
+                      <>
+                        <div className="color-toolbar" style={{ color: textColor }}>
+                          {colors.length > 2 && (
+                            <button
+                              className="toolbar-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeColor(color.id);
+                                e.currentTarget.blur();
+                              }}
+                              title="Remove"
+                              style={{ color: textColor }}
+                            >
+                              <X size={20} />
+                            </button>
+                          )}
 
-                    <div className="color-content">
-                      <h2
-                        className={`color-hex ${isCopied ? 'copied' : ''}`}
-                        style={{ color: textColor }}
-                        onClick={() => copyHex(color.id, color.hex)}
-                      >
-                        {isCopied ? 'Copied!' : color.hex.replace('#', '')}
-                      </h2>
-                    </div>
+                          <button
+                            className="toolbar-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyHex(color.id, color.hex);
+                              e.currentTarget.blur();
+                            }}
+                            title="Copy hex"
+                            style={{ color: textColor }}
+                          >
+                            {isCopied ? <Check size={20} /> : <Copy size={20} />}
+                          </button>
 
-                    {color.locked && (
-                      <div className="lock-indicator" style={{ color: textColor }}>
-                        <Lock size={16} />
-                      </div>
+                          <button
+                            className={`toolbar-btn ${color.locked ? 'active' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleLock(color.id);
+                              e.currentTarget.blur();
+                            }}
+                            title={color.locked ? 'Unlock' : 'Lock'}
+                            style={{ color: textColor }}
+                          >
+                            {color.locked ? <Lock size={20} /> : <Unlock size={20} />}
+                          </button>
+
+                          {/* Trigger the Shade Picker */}
+                          <button
+                            className={`toolbar-btn ${isShadePicking ? 'active' : ''}`}
+                            title="Adjust shade"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleShadePicker(color.id);
+                              e.currentTarget.blur();
+                            }}
+                            style={{ color: textColor }}
+                          >
+                            <SwatchBook size={20} />
+                          </button>
+
+                          <div
+                            className="toolbar-btn drag-handle"
+                            title="Drag to reorder"
+                            style={{ color: textColor }}
+                            onMouseDown={(e) => handleDragStart(e, color.id, index)}
+                            onTouchStart={(e) => handleDragStart(e, color.id, index)}
+                          >
+                            <DragIcon size={20} />
+                          </div>
+                        </div>
+
+                        <div className="color-content">
+                          <h2
+                            className={`color-hex ${isCopied ? 'copied' : ''}`}
+                            style={{ color: textColor }}
+                            onClick={() => copyHex(color.id, color.hex)}
+                          >
+                            {isCopied ? 'Copied!' : color.hex.replace('#', '')}
+                          </h2>
+                        </div>
+
+                        {color.locked && (
+                          <div className="lock-indicator" style={{ color: textColor }}>
+                            <Lock size={16} />
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
+                  {/* Add button logic */}
                   {index < colors.length - 1 && !dragState && canAddMoreColors && (
                     <div className="addColor">
                       <button

@@ -674,3 +674,46 @@ export const simulateColorBlindness = (hex, type) => {
     .toString(16)
     .padStart(2, '0')}`.toUpperCase();
 };
+
+// ============================================
+// GENERATE SHADES (Restored)
+// ============================================
+export const generateShades = (hex, totalSteps = 20) => {
+  const { h, s, l } = hexToHsl(hex);
+  const shades = [];
+  
+  // Define bounds for the gradient (so it doesn't go Pure White or Pure Black unless requested)
+  const maxLight = 98;
+  const minLight = 5;
+
+  // 1. Determine the index where the original color should sit.
+  // We map the current Lightness (0-100) to the step index (0 to totalSteps-1).
+  // High lightness = Low index (top of list).
+  const currentIndex = Math.round((1 - (l / 100)) * (totalSteps - 1));
+
+  // 2. Generate Lighter Shades (Pre-Original)
+  // Interpolate from maxLight down to original L
+  if (currentIndex > 0) {
+    const stepSize = (maxLight - l) / currentIndex;
+    for (let i = 0; i < currentIndex; i++) {
+      const newL = maxLight - (stepSize * i);
+      shades.push(hslToHex(h, s, newL));
+    }
+  }
+
+  // 3. Add The Original Color (Exactly as is)
+  shades.push(hex);
+
+  // 4. Generate Darker Shades (Post-Original)
+  // Interpolate from original L down to minLight
+  const remainingSteps = totalSteps - 1 - currentIndex;
+  if (remainingSteps > 0) {
+    const stepSize = (l - minLight) / remainingSteps;
+    for (let i = 1; i <= remainingSteps; i++) {
+      const newL = l - (stepSize * i);
+      shades.push(hslToHex(h, s, newL));
+    }
+  }
+
+  return shades;
+};
