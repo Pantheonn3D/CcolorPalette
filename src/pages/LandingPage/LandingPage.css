@@ -1,0 +1,112 @@
+/* Layout Wrapper */
+.landing-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden; /* Prevents scroll if image fits perfectly */
+  }
+  
+  /* Hero Section - The Background */
+  .hero-section {
+    flex: 1; /* Takes all remaining space below header */
+    width: 100%;
+    background-size: cover;
+    background-position: center bottom; /* Aligns bands to bottom like screenshot */
+    background-repeat: no-repeat;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    
+    position: relative;
+  }
+  
+  /* Content Container */
+  .hero-content {
+    max-width: 800px;
+    padding: 0 20px;
+    /* Push content slightly up to match screenshot */
+    margin-bottom: 80px; 
+    color: #161616;
+  }
+  
+  /* Typography */
+  .hero-title {
+    font-size: 6rem; /* Very large and bold */
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+    color: #161616;
+    line-height: 1;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.5rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #2c2c2c;
+    margin-bottom: 40px;
+    opacity: 0.9;
+  }
+  
+  /* Buttons */
+  .hero-buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+  }
+  
+  .btn-primary {
+    background-color: #161616;
+    color: white;
+    padding: 16px 32px;
+    border-radius: 99px; /* Pill shape */
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  
+  .btn-primary:hover {
+    transform: scale(1.03);
+    opacity: 0.95;
+  }
+  
+  .btn-secondary {
+    background-color: white;
+    color: #161616;
+    padding: 16px 32px;
+    border-radius: 99px; /* Pill shape */
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: default; /* Non-functional for now as requested */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  .feature-section {
+    
+  }
+  
+  /* Mobile Responsive */
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 3.5rem;
+    }
+    
+    .hero-subtitle {
+      font-size: 1.1rem;
+    }
+    
+    .hero-buttons {
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .btn-primary, .btn-secondary {
+      width: 100%;
+    }
+  }

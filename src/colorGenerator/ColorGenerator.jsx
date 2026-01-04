@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+// src/colorGenerator/ColorGenerator.jsx
+
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Helmet } from 'react-helmet-async';
 import {
   Plus,
   X,
   Copy,
   Lock,
   Unlock,
-  GripVertical,
   ArrowLeftRight,
   ArrowDownUp,
   SwatchBook,
   Check,
-  ChevronDown,
   Undo2,
   Redo2,
   Sparkles,
@@ -25,7 +26,6 @@ import AccessibilityPanel from './AccessibilityPanel';
 import HistoryPanel from './HistoryPanel';
 import ExportPanel from './ExportPanel';
 import BookmarkPanel from './BookmarkPanel';
-import LandingContent from '../LandingContent';
 import './ColorGenerator.css';
 import {
   generateRandomPalette,
@@ -33,6 +33,8 @@ import {
   generateBridgeColor,
   simulateColorBlindness,
   generateShades,
+  generateRichSEO,
+  hexToHsl,
 } from '../utils/colorUtils';
 
 const generateId = () => Math.random().toString(36).substring(2, 11);
@@ -50,7 +52,6 @@ const MIN_COL_PX = 128;
 
 const isMobileView = () => window.innerWidth <= 768;
 
-// Dynamic max panels based on screen size
 const getMaxOpenPanels = () => {
   if (typeof window !== 'undefined' && window.innerWidth <= 768) {
     return 1;
@@ -58,23 +59,82 @@ const getMaxOpenPanels = () => {
   return 3;
 };
 
+// Helper to convert hex to RGB for structured data
+const hexToRgb = (hex) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+};
+
+// Format content sections for display
+const formatContentSections = (content) => {
+  if (!content) return [];
+  
+  return content.split('\n\n').map((section, index) => {
+    const colonIndex = section.indexOf(':');
+    if (colonIndex > 0 && colonIndex < 50) {
+      const title = section.substring(0, colonIndex).trim();
+      const body = section.substring(colonIndex + 1).trim();
+      return { id: index, title, body, hasTitle: true };
+    }
+    return { id: index, title: '', body: section, hasTitle: false };
+  });
+};
+
 function ColorGenerator() {
-  // Refs - moved inside component
+  // Refs
   const containerRef = useRef(null);
   const colorsAreaRef = useRef(null);
+  useEffect(() => {
+    const generateXML = () => {
+      const domain = "https://ccolorpalette.com"; // <--- CHANGE THIS
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>
+  <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+      <loc>${domain}/</loc>
+      <changefreq>daily</changefreq>
+      <priority>1.0</priority>
+    </url>`;
+  
+      console.log("Generating 500 Seed Palettes...");
+  
+      // Generate 500 unique palettes
+      for (let i = 0; i < 500; i++) {
+        // Use your existing 'auto' mode which has the weighted probability logic
+        const hexes = generateRandomPalette('auto', 5, { mood: 'any' });
+        
+        // Clean up hexes (remove #) and join with dashes
+        const slug = hexes.map(h => h.replace('#', '')).join('-');
+        
+        xml += `
+    <url>
+      <loc>${domain}/${slug}</loc>
+      <changefreq>monthly</changefreq>
+      <priority>0.8</priority>
+    </url>`;
+      }
+  
+      xml += `\n</urlset>`;
+      
+      console.log("↓↓↓ COPY BELOW THIS LINE ↓↓↓");
+      console.log(xml);
+      console.log("↑↑↑ COPY ABOVE THIS LINE ↑↑↑");
+    };
+  
+    // Run once on mount
+    generateXML();
+  }, []);
 
-  // State for stacked colors layout - moved inside component
+  // State for stacked colors layout
   const [stackColors, setStackColors] = useState(false);
 
-  // Helper function to check vertical layout - now uses state properly
+  // Helper function to check vertical layout
   const isVerticalLayout = useCallback(() => {
     return isMobileView() || stackColors;
   }, [stackColors]);
 
   const DragIcon = isVerticalLayout() ? ArrowDownUp : ArrowLeftRight;
-
-  // Page state (0 = generator, 1 = landing)
-  const [currentPage, setCurrentPage] = useState(0);
 
   // History state
   const [history, setHistory] = useState(() => [
@@ -96,6 +156,7 @@ function ColorGenerator() {
   // Accessibility
   const [colorBlindMode, setColorBlindMode] = useState('normal');
 
+  // --- CORE DATA SOURCE ---
   const colors = history[historyIndex];
 
   // UI states
@@ -106,10 +167,6 @@ function ColorGenerator() {
   // Drag states
   const [dragState, setDragState] = useState(null);
   const [isSnapping, setIsSnapping] = useState(false);
-
-  // Page navigation
-  const goToGenerator = () => setCurrentPage(0);
-  const goToLanding = () => setCurrentPage(1);
 
   // Panel helper functions
   const isPanelOpen = (panelName) => openPanels.includes(panelName);
@@ -141,7 +198,7 @@ function ColorGenerator() {
 
   const canAddMoreColors = colors.length < MAX_COLORS;
 
-  // Get current URL for bookmark panel
+  // Get current URL for bookmark panel & SEO Canonical
   const getCurrentUrl = () => {
     if (typeof window === 'undefined') return '';
     return window.location.href;
@@ -149,23 +206,16 @@ function ColorGenerator() {
 
   const [activeShadeId, setActiveShadeId] = useState(null);
 
-  // 1. NEW: Handle Tap/Click Outside (Best for Mobile convenience)
+  // Handle Tap/Click Outside Shade Picker
   useEffect(() => {
     const handleClickOutside = (e) => {
-      // If no picker is open, do nothing
       if (!activeShadeId) return;
-
-      // If the click is INSIDE the picker, do nothing
       if (e.target.closest('.shade-container')) return;
-
-      // Otherwise, close the picker
       setActiveShadeId(null);
     };
 
     if (activeShadeId) {
-      // Use 'mousedown' for quicker response than 'click'
       window.addEventListener('mousedown', handleClickOutside);
-      // Add 'touchstart' for better mobile support
       window.addEventListener('touchstart', handleClickOutside);
     }
 
@@ -175,9 +225,8 @@ function ColorGenerator() {
     };
   }, [activeShadeId]);
 
-  // 2. NEW: Handle Mouse Leave (Specific for PC requirement)
+  // Handle Mouse Leave (Desktop)
   const handleMouseLeave = () => {
-    // Only apply "hover exit" logic on larger screens (Desktop)
     if (window.innerWidth > 768) {
       setActiveShadeId(null);
     }
@@ -228,6 +277,8 @@ function ColorGenerator() {
     const parseUrlState = () => {
       const path = window.location.pathname.slice(1);
       const params = new URLSearchParams(window.location.search);
+
+      if (path === 'home') return;
 
       const navEntries = performance.getEntriesByType('navigation');
       const isReload = navEntries.length > 0 && navEntries[0].type === 'reload';
@@ -363,23 +414,20 @@ function ColorGenerator() {
   );
 
   const toggleShadePicker = (id) => {
-    setActiveShadeId(prev => (prev === id ? null : id));
+    setActiveShadeId((prev) => (prev === id ? null : id));
   };
 
   const pickShade = (originalId, newHex) => {
-    // Replace the color in the history
     const newColors = colors.map((c) =>
       c.id === originalId ? { ...c, hex: newHex } : c
     );
     updateColors(newColors);
-    setActiveShadeId(null); // Close the picker
+    setActiveShadeId(null);
   };
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (currentPage !== 0) return;
-
       if (e.code === 'Space') {
         if (document.activeElement instanceof HTMLButtonElement) {
           document.activeElement.blur();
@@ -404,7 +452,7 @@ function ColorGenerator() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, colors.length, generatePalette, currentPage]);
+  }, [undo, redo, colors.length, generatePalette]);
 
   // Update URL whenever colors change
   useEffect(() => {
@@ -687,10 +735,107 @@ function ColorGenerator() {
     return simulateColorBlindness(hex, colorBlindMode);
   };
 
+  // --- SEO DATA GENERATION ---
+  const currentHexes = useMemo(() => colors.map((c) => c.hex), [colors]);
+  const seoData = useMemo(
+    () => generateRichSEO(currentHexes, generationMode, constraints.mood),
+    [currentHexes, generationMode, constraints.mood]
+  );
+
+  const currentCanonical = typeof window !== 'undefined' ? window.location.href : '';
+  const contentSections = useMemo(() => formatContentSections(seoData.content), [seoData.content]);
+
+  // Generate JSON-LD structured data for the color palette
+  const structuredData = useMemo(() => {
+    const colorItems = colors.map((c, index) => {
+      const rgb = hexToRgb(c.hex);
+      const hsl = hexToHsl(c.hex);
+      return {
+        '@type': 'Thing',
+        name: `Color ${index + 1}`,
+        description: `${c.hex} - RGB(${rgb.r}, ${rgb.g}, ${rgb.b}) - HSL(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)`,
+        identifier: c.hex,
+      };
+    });
+
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'CreativeWork',
+      name: seoData.title,
+      description: seoData.meta,
+      url: currentCanonical,
+      creator: {
+        '@type': 'Organization',
+        name: 'CcolorPalette',
+      },
+      keywords: seoData.keywords?.join(', ') || '',
+      about: colorItems,
+      additionalProperty: seoData.traits
+        ? [
+            {
+              '@type': 'PropertyValue',
+              name: 'Color Harmony',
+              value: seoData.traits.harmony,
+            },
+            {
+              '@type': 'PropertyValue',
+              name: 'Color Temperature',
+              value: seoData.traits.temperature,
+            },
+            {
+              '@type': 'PropertyValue',
+              name: 'Saturation Level',
+              value: seoData.traits.saturation,
+            },
+            {
+              '@type': 'PropertyValue',
+              name: 'Primary Hue',
+              value: seoData.traits.primaryHue,
+            },
+            {
+              '@type': 'PropertyValue',
+              name: 'Accessibility Score',
+              value: seoData.traits.accessibilityScore,
+            },
+          ]
+        : [],
+    };
+  }, [colors, seoData, currentCanonical]);
+
   return (
     <div className="app-wrapper">
-      {/* Generator Page */}
-      <div className={`page-section ${currentPage === 0 ? 'visible' : 'hidden'}`}>
+      {/* SEO: HEAD META TAGS */}
+      <Helmet>
+        <title>{seoData.title} | CcolorPalette</title>
+        <meta name="description" content={seoData.meta} />
+        <link rel="canonical" href={currentCanonical} />
+
+        {/* Keywords */}
+        {seoData.keywords && seoData.keywords.length > 0 && (
+          <meta name="keywords" content={seoData.keywords.slice(0, 10).join(', ')} />
+        )}
+
+        {/* Open Graph / Social */}
+        <meta property="og:title" content={seoData.title} />
+        <meta property="og:description" content={seoData.meta} />
+        <meta property="og:url" content={currentCanonical} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="CcolorPalette" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={seoData.title} />
+        <meta name="twitter:description" content={seoData.meta} />
+
+        {/* Additional SEO signals */}
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content="CcolorPalette" />
+
+        {/* JSON-LD Structured Data */}
+        <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
+      </Helmet>
+
+      <div className="page-section visible">
         <Header
           canUndo={canUndo}
           canRedo={canRedo}
@@ -707,7 +852,7 @@ function ColorGenerator() {
           onToggleBookmark={() => togglePanel('bookmark')}
           isBookmarkOpen={isBookmarkOpen}
           logoColors={colors}
-          onLogoClick={goToGenerator}
+          onLogoClick={() => generatePalette(colors.length)}
         />
 
         <main className="generator-container" ref={containerRef}>
@@ -770,14 +915,11 @@ function ColorGenerator() {
               const displayHex = getDisplayColor(color.hex);
               const textColor = getContrastColor(displayHex);
 
-              // Standard states
               const isNew = color.id === newColorId;
               const isRemoving = color.id === removingId;
               const isCopied = copiedId === color.id;
               const isDragging = dragState?.id === color.id;
               const columnStyle = getColumnStyle(index, color.id);
-
-              // Check if this column is in Shade Picker mode
               const isShadePicking = activeShadeId === color.id;
 
               return (
@@ -790,25 +932,22 @@ function ColorGenerator() {
                     }`}
                     style={{ backgroundColor: displayHex, ...columnStyle }}
                   >
-                    {/* 4. CONDITIONAL RENDERING: Shade Picker vs Standard Tools */}
-
                     {isShadePicking ? (
-                      <div
-                        className="shade-container"
-                        onMouseLeave={handleMouseLeave}
-                      >
-                        {generateShades(color.hex, window.innerWidth <= 768 ? 6 : 20).map((shadeHex) => (
-                          <button
-                            key={shadeHex}
-                            className="shade-step"
-                            style={{ backgroundColor: shadeHex }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              pickShade(color.id, shadeHex);
-                            }}
-                            title={shadeHex}
-                          />
-                        ))}
+                      <div className="shade-container" onMouseLeave={handleMouseLeave}>
+                        {generateShades(color.hex, window.innerWidth <= 768 ? 6 : 20).map(
+                          (shadeHex) => (
+                            <button
+                              key={shadeHex}
+                              className="shade-step"
+                              style={{ backgroundColor: shadeHex }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                pickShade(color.id, shadeHex);
+                              }}
+                              title={shadeHex}
+                            />
+                          )
+                        )}
                         <button
                           className="shade-close-btn"
                           onClick={(e) => {
@@ -820,7 +959,6 @@ function ColorGenerator() {
                         </button>
                       </div>
                     ) : (
-                      /* STANDARD CONTENT */
                       <>
                         <div className="color-toolbar" style={{ color: textColor }}>
                           {colors.length > 2 && (
@@ -864,7 +1002,6 @@ function ColorGenerator() {
                             {color.locked ? <Lock size={20} /> : <Unlock size={20} />}
                           </button>
 
-                          {/* Trigger the Shade Picker */}
                           <button
                             className={`toolbar-btn ${isShadePicking ? 'active' : ''}`}
                             title="Adjust shade"
@@ -908,7 +1045,6 @@ function ColorGenerator() {
                     )}
                   </div>
 
-                  {/* Add button logic */}
                   {index < colors.length - 1 && !dragState && canAddMoreColors && (
                     <div className="addColor">
                       <button
@@ -965,23 +1101,113 @@ function ColorGenerator() {
             currentUrl={getCurrentUrl()}
           />
         </main>
-
-        {/* Chevron to landing */}
-        <button className={`nav-chevron ${openPanels.length > 0 ? 'panels-open' : ''}`} onClick={goToLanding}>
-          <span className="nav-chevron-label">About</span>
-          <ChevronDown size={16} className="nav-chevron-icon" />
-        </button>
       </div>
 
-      {/* Landing Page */}
-      <div className={`page-section landing-page ${currentPage === 1 ? 'visible' : 'hidden'}`}>
-        <LandingContent onBackToGenerator={goToGenerator} />
+      {/* SEO: RICH CONTENT FOOTER */}
+      <footer className="seo-content-footer">
+        <div className="seo-content-wrapper">
+          {/* Main Title */}
+          <h1 className="seo-main-title">{seoData.title}</h1>
 
-        <button className="nav-chevron up on-light" onClick={goToGenerator}>
-          <ChevronDown size={16} className="nav-chevron-icon" />
-          <span className="nav-chevron-label">Generator</span>
-        </button>
-      </div>
+          {/* Palette Summary */}
+          {seoData.traits && (
+            <div className="seo-palette-summary">
+              <span className="seo-trait">
+                {seoData.traits.harmony} harmony
+              </span>
+              <span className="seo-trait-separator">|</span>
+              <span className="seo-trait">
+                {seoData.traits.temperature} temperature
+              </span>
+              <span className="seo-trait-separator">|</span>
+              <span className="seo-trait">
+                {seoData.traits.saturation} saturation
+              </span>
+              <span className="seo-trait-separator">|</span>
+              <span className="seo-trait">
+                {seoData.traits.accessibilityScore} accessibility
+              </span>
+            </div>
+          )}
+        <div className="sr-only">
+          <div className="seo-related-links" style={{ marginTop: '2rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
+            <h3 className="seo-section-title">Explore Related Palettes</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {/* Generate 6 random links so the bot keeps moving */}
+              {Array.from({ length: 6 }).map((_, i) => {
+                // Create a random valid URL for the bot to follow
+                const randomHexes = generateRandomPalette('auto', 5+Math.random(3), {}).map(h => h.replace('#', ''));
+                const url = `/${randomHexes.join('-')}`;
+                
+                return (
+                  <a 
+                    key={i} 
+                    href={url}
+                    style={{ fontSize: '12px', textDecoration: 'underline', color: 'inherit', opacity: 0.7 }}
+                  >
+                    {/* Give the link a descriptive anchor text, e.g., "Vibrant Blue Palette" */}
+                    Generated Palette {i + 1}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        </div>       
+
+          {/* Color Values Reference */}
+          <div className="seo-color-reference">
+            <h2 className="seo-section-title">Color Values</h2>
+            <div className="seo-color-grid">
+              {colors.map((c, index) => {
+                const rgb = hexToRgb(c.hex);
+                const hsl = hexToHsl(c.hex);
+                return (
+                  <div key={c.id} className="seo-color-item">
+                    <div
+                      className="seo-color-swatch"
+                      style={{ backgroundColor: c.hex }}
+                    />
+                    <div className="seo-color-values">
+                      <span className="seo-hex">{c.hex}</span>
+                      <span className="seo-rgb">
+                        RGB({rgb.r}, {rgb.g}, {rgb.b})
+                      </span>
+                      <span className="seo-hsl">
+                        HSL({Math.round(hsl.h)}, {Math.round(hsl.s)}%, {Math.round(hsl.l)}%)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Content Sections */}
+          <article className="seo-article">
+            {contentSections.map((section) => (
+              <section key={section.id} className="seo-section">
+                {section.hasTitle && (
+                  <h2 className="seo-section-title">{section.title}</h2>
+                )}
+                <p className="seo-section-body">{section.body}</p>
+              </section>
+            ))}
+          </article>
+
+          {/* Keywords for crawlers */}
+          {seoData.keywords && seoData.keywords.length > 0 && (
+            <div className="seo-keywords">
+              <span className="seo-keywords-label">Related searches: </span>
+              {seoData.keywords.slice(0, 8).map((keyword, index) => (
+                <span key={index} className="seo-keyword">
+                  {keyword}
+                  {index < Math.min(seoData.keywords.length, 8) - 1 && ', '}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </footer>
     </div>
   );
 }

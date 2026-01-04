@@ -570,6 +570,37 @@
   }
 }
 
+.seo-footer-tiny {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  color: rgba(0, 0, 0, 0.2); /* Very faint */
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5; /* Below the UI controls */
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+  
+  /* Ensures it can't be clicked */
+  pointer-events: none; 
+}
+
 /* ========== MOBILE RESPONSIVE ========== */
 @media (max-width: 768px) {
   .generator-container {

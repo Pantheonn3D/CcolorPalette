@@ -301,6 +301,61 @@
   margin: 0;
 }
 
+.header-cta-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #161616;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.header-cta-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+/* Landing Mode specifics */
+.header.landing-mode {
+  position: sticky;
+  top: 0;
+  background: white;
+  box-shadow: none; /* Removed shadow per your design */
+  border-bottom: 1px solid rgba(0,0,0,0.05); /* Optional subtle divider */
+  padding: 12px 24px;
+  border-radius: 0px;
+}
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.nav-link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #161616;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.nav-link:hover {
+  opacity: 0.7;
+}
+
+.landing-icons {
+  display: flex;
+  gap: 8px;
+  margin-left: 8px;
+  padding-left: 16px;
+  border-left: 1px solid rgba(0,0,0,0.1);
+}
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
