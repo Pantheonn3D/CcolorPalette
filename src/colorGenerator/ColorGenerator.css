@@ -539,6 +539,37 @@
   display: none;
 }
 
+/* ================================================================= */
+/* PC STACKED VIEW FIXES                                             */
+/* ================================================================= */
+
+@media (min-width: 769px) {
+  /* 
+     1. Push the first color down so the background covers the area behind the header,
+        but the content (Hex code) starts lower down.
+  */
+  .colors-area.stacked .color-column:first-child {
+    padding-top: 100px;
+  }
+ 
+  /* 
+     2. The absolute positioned elements (Toolbar & Remove Button) are based on 
+        the total height (50%), so they ignore the padding. 
+        
+        We need to push them down by 50px (half the padding) to realign them 
+        visually with the Hex code (which Flexbox centers in the remaining space).
+        
+        Calculation: Center of visible area = 50% + 50px
+  */
+  .colors-area.stacked .color-column:first-child .color-toolbar {
+    top: calc(50% + 50px);
+  }
+  
+  .colors-area.stacked .color-column:first-child .column-remove-btn {
+    top: calc(50% + 50px);
+  }
+}
+
 /* ========== MOBILE RESPONSIVE ========== */
 @media (max-width: 768px) {
   .generator-container {
