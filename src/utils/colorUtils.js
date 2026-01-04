@@ -275,22 +275,71 @@ const getHueDistance = (h1, h2) => {
   return diff > 180 ? 360 - diff : diff;
 };
 
-const clusterByHue = (colors) => {
-  const colorData = colors.map((hex) => ({ hex, hsl: hexToHsl(hex) }));
-  return colorData.sort((a, b) => a.hsl.l - b.hsl.l).map(c => c.hex);
+// Calculate 3D distance between two HSL colors
+// We weight attributes differently: Hue is most important, then Lightness.
+const getColorDistance = (c1, c2) => {
+  const hDist = getHueDistance(c1.hsl.h, c2.hsl.h);
+  const sDist = Math.abs(c1.hsl.s - c2.hsl.s);
+  const lDist = Math.abs(c1.hsl.l - c2.hsl.l);
+
+  // We square the differences to punish large jumps (Euclidean distance style)
+  // Weights: Hue(1.0), Saturation(0.5), Lightness(0.8)
+  return Math.sqrt(
+    (hDist * hDist) + 
+    (sDist * sDist * 0.5) + 
+    (lDist * lDist * 0.8)
+  );
 };
 
+// THE SMART SORTER
 const optimizeColorOrder = (colors) => {
-  const hsls = colors.map(hexToHsl);
-  const hueSpread = Math.max(...hsls.map(c => c.h)) - Math.min(...hsls.map(c => c.h));
+  const colorData = colors.map((hex) => ({ hex, hsl: hexToHsl(hex) }));
   
-  if (hueSpread < 60) {
-    return clusterByHue(colors);
-  } else {
-    return colors.map(hex => ({ hex, h: hexToHsl(hex).h }))
-                 .sort((a, b) => a.h - b.h)
-                 .map(c => c.hex);
+  // 1. Check if the palette is Monochromatic (Low Hue Variation)
+  const hues = colorData.map(c => c.hsl.h);
+  const hueSpread = Math.max(...hues) - Math.min(...hues);
+  
+  // If Hue spread is small (or wraps around 360/0 cleanly), it's effectively one color.
+  // The best way to sort one color is by Lightness (Dark -> Light).
+  if (hueSpread < 40) {
+    return colorData.sort((a, b) => a.hsl.l - b.hsl.l).map(c => c.hex);
   }
+
+  // 2. If it's Multicolor, use "Nearest Neighbor" sorting.
+  // This creates a smooth path through the colors.
+  
+  // Step A: Find the "Anchor" (The Darkest Color)
+  // Starting with the darkest color usually feels the most "grounded"
+  let current = colorData.reduce((prev, curr) => 
+    (curr.hsl.l < prev.hsl.l ? curr : prev)
+  );
+  
+  const sorted = [current];
+  let remaining = colorData.filter(c => c !== current);
+
+  // Step B: Iteratively find the visually closest color to the last one added
+  while (remaining.length > 0) {
+    let nearest = null;
+    let minDist = Infinity;
+
+    for (const candidate of remaining) {
+      const dist = getColorDistance(current, candidate);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = candidate;
+      }
+    }
+
+    if (nearest) {
+      sorted.push(nearest);
+      current = nearest;
+      remaining = remaining.filter(c => c !== nearest);
+    } else {
+      break; 
+    }
+  }
+
+  return sorted.map(c => c.hex);
 };
 
 export const getContrastColor = (hex) => {
