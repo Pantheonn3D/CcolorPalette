@@ -339,7 +339,7 @@
   padding: 0;
   background: var(--color-bg-card);
   border: 2px solid transparent;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   cursor: pointer;
   overflow: hidden;
   transition: border-color var(--transition-fast),

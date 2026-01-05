@@ -330,89 +330,138 @@ function ColorGenerator() {
     };
   }, [activeShadeId]);
 
-  // Drag and Drop
-  const getColumnSize = useCallback(() => {
-    if (!containerRef.current) return 0;
+  // Constants - add this new one
+const HEADER_OFFSET = 100; // Height reserved for floating header in stacked mode
 
-    const firstColumn = containerRef.current.querySelector('.color-column');
-    const vertical = isVerticalLayout();
 
-    if (firstColumn) {
-      return vertical ? firstColumn.offsetHeight : firstColumn.offsetWidth;
+// Updated getColumnSize function
+const getColumnSize = useCallback(() => {
+  if (!containerRef.current) return 0;
+
+  const vertical = isVerticalLayout();
+  const isMobile = isMobileView();
+
+  if (vertical) {
+    const colorsArea = colorsAreaRef.current;
+    if (!colorsArea) return 0;
+
+    const areaHeight = colorsArea.offsetHeight;
+
+    // On desktop stacked mode, the first color has extra padding for the header
+    // We need to calculate the "uniform" size for drag calculations
+    if (stackColors && !isMobile && colors.length > 0) {
+      // Subtract the header offset from total height, then divide evenly
+      const effectiveHeight = areaHeight - HEADER_OFFSET;
+      return effectiveHeight / colors.length;
     }
 
-    if (vertical) {
-      const containerHeight = containerRef.current.offsetHeight;
-      const headerHeight = 56;
-      return (containerHeight - headerHeight) / colors.length;
-    }
-
+    // Mobile - all colors are uniform
+    return areaHeight / colors.length;
+  } else {
+    // Horizontal mode
     let panelWidth = 0;
     if (isMethodOpen) panelWidth += 240;
     if (isA11yOpen) panelWidth += 280;
     if (isHistoryOpen) panelWidth += 260;
-    if (isExportOpen) panelWidth += 300;
+    if (isExportOpen) panelWidth += 320;
     if (isBookmarkOpen) panelWidth += 280;
 
     const availableWidth = containerRef.current.offsetWidth - panelWidth;
     return availableWidth / colors.length;
-  }, [colors.length, isMethodOpen, isA11yOpen, isHistoryOpen, isExportOpen, isBookmarkOpen, isVerticalLayout]);
+  }
+}, [
+  colors.length,
+  isMethodOpen,
+  isA11yOpen,
+  isHistoryOpen,
+  isExportOpen,
+  isBookmarkOpen,
+  isVerticalLayout,
+  stackColors,
+]);
 
-  const handleDragStart = (e, id, index) => {
-    if (e.type === 'touchstart') e.preventDefault();
+// Updated handleDragStart to account for header offset
+const handleDragStart = (e, id, index) => {
+  if (e.type === 'touchstart') e.preventDefault();
 
-    const columnSize = getColumnSize();
-    const vertical = isVerticalLayout();
+  const columnSize = getColumnSize();
+  const vertical = isVerticalLayout();
+  const isMobile = isMobileView();
+
+  let clientPos;
+  if (e.type === 'touchstart') {
+    clientPos = vertical ? e.touches[0].clientY : e.touches[0].clientX;
+  } else {
+    e.preventDefault();
+    clientPos = vertical ? e.clientY : e.clientX;
+  }
+
+  // In desktop stacked mode, adjust startPos to account for header offset
+  // This makes the drag math work correctly
+  let adjustedStartPos = clientPos;
+  if (stackColors && !isMobile && vertical) {
+    // The first color starts after the header offset
+    // Normalize the position as if all colors were uniform from the top
+    const colorsArea = colorsAreaRef.current;
+    if (colorsArea) {
+      const areaRect = colorsArea.getBoundingClientRect();
+      const relativePos = clientPos - areaRect.top - HEADER_OFFSET;
+      adjustedStartPos = areaRect.top + relativePos;
+    }
+  }
+
+  setDragState({
+    id,
+    startIndex: index,
+    currentIndex: index,
+    startPos: adjustedStartPos,
+    currentPos: adjustedStartPos,
+    columnSize,
+    isMobile: vertical,
+    isDesktopStacked: stackColors && !isMobile && vertical,
+    areaTop: colorsAreaRef.current?.getBoundingClientRect().top || 0,
+  });
+};
+
+// Updated handleMouseMove to handle desktop stacked mode correctly
+const handleMouseMove = useCallback(
+  (e) => {
+    if (!dragState || isSnapping) return;
+
+    const { startIndex, columnSize, isMobile, isDesktopStacked, areaTop } = dragState;
 
     let clientPos;
-    if (e.type === 'touchstart') {
-      clientPos = vertical ? e.touches[0].clientY : e.touches[0].clientX;
+    if (e.type === 'touchmove') {
+      clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
     } else {
-      e.preventDefault();
-      clientPos = vertical ? e.clientY : e.clientX;
+      clientPos = isMobile ? e.clientY : e.clientX;
     }
 
-    setDragState({
-      id,
-      startIndex: index,
-      currentIndex: index,
-      startPos: clientPos,
-      currentPos: clientPos,
-      columnSize,
-      isMobile: vertical,
-    });
-  };
+    // Adjust position for desktop stacked mode
+    let adjustedCurrentPos = clientPos;
+    if (isDesktopStacked) {
+      const relativePos = clientPos - areaTop - HEADER_OFFSET;
+      adjustedCurrentPos = areaTop + relativePos;
+    }
 
-  const handleMouseMove = useCallback(
-    (e) => {
-      if (!dragState || isSnapping) return;
+    let delta = adjustedCurrentPos - dragState.startPos;
 
-      const { startIndex, columnSize, isMobile } = dragState;
+    // Clamp delta to valid range
+    const maxNegativeOffset = -startIndex * columnSize;
+    const maxPositiveOffset = (colors.length - 1 - startIndex) * columnSize;
+    delta = Math.max(maxNegativeOffset, Math.min(maxPositiveOffset, delta));
 
-      let clientPos;
-      if (e.type === 'touchmove') {
-        clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
-      } else {
-        clientPos = isMobile ? e.clientY : e.clientX;
-      }
+    const indexOffset = Math.round(delta / columnSize);
+    const newIndex = Math.max(0, Math.min(colors.length - 1, startIndex + indexOffset));
 
-      let delta = clientPos - dragState.startPos;
-
-      const maxNegativeOffset = -startIndex * columnSize;
-      const maxPositiveOffset = (colors.length - 1 - startIndex) * columnSize;
-      delta = Math.max(maxNegativeOffset, Math.min(maxPositiveOffset, delta));
-
-      const indexOffset = Math.round(delta / columnSize);
-      const newIndex = Math.max(0, Math.min(colors.length - 1, startIndex + indexOffset));
-
-      setDragState((prev) => ({
-        ...prev,
-        currentPos: dragState.startPos + delta,
-        currentIndex: newIndex,
-      }));
-    },
-    [dragState, isSnapping, colors.length]
-  );
+    setDragState((prev) => ({
+      ...prev,
+      currentPos: adjustedCurrentPos,
+      currentIndex: newIndex,
+    }));
+  },
+  [dragState, isSnapping, colors.length]
+);
 
   const handleMouseUp = useCallback(() => {
     if (!dragState) return;
@@ -463,65 +512,81 @@ function ColorGenerator() {
     };
   }, [dragState, handleMouseMove, handleMouseUp]);
 
-  const getColumnStyle = (index, id) => {
-    if (!dragState) return {};
+// Updated getColumnStyle to handle desktop stacked mode
+const getColumnStyle = (index, id) => {
+  if (!dragState) return {};
 
-    const { startIndex, currentIndex, startPos, currentPos, columnSize, isMobile } = dragState;
-    const isDragged = id === dragState.id;
-    const transformProp = isMobile ? 'translateY' : 'translateX';
+  const { startIndex, currentIndex, startPos, currentPos, columnSize, isMobile, isDesktopStacked } =
+    dragState;
+  const isDragged = id === dragState.id;
+  const transformProp = isMobile ? 'translateY' : 'translateX';
 
-    if (isDragged) {
-      if (isSnapping) {
-        const snapOffset = (currentIndex - startIndex) * columnSize;
-        return {
-          transform: `${transformProp}(${snapOffset}px)`,
-          zIndex: 100,
-          transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        };
-      }
+  if (isDragged) {
+    if (isSnapping) {
+      const snapOffset = (currentIndex - startIndex) * columnSize;
       return {
-        transform: `${transformProp}(${currentPos - startPos}px)`,
+        transform: `${transformProp}(${snapOffset}px)`,
         zIndex: 100,
-        transition: 'none',
+        transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
       };
     }
 
-    let shift = 0;
-    if (startIndex < currentIndex && index > startIndex && index <= currentIndex) shift = -1;
-    if (startIndex > currentIndex && index >= currentIndex && index < startIndex) shift = 1;
-
+    const offset = currentPos - startPos;
     return {
-      transform: shift !== 0 ? `${transformProp}(${shift * columnSize}px)` : `${transformProp}(0)`,
-      transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      transform: `${transformProp}(${offset}px)`,
+      zIndex: 100,
+      transition: 'none',
     };
+  }
+
+  // Calculate shift for non-dragged items
+  let shift = 0;
+  if (startIndex < currentIndex && index > startIndex && index <= currentIndex) {
+    shift = -1;
+  }
+  if (startIndex > currentIndex && index >= currentIndex && index < startIndex) {
+    shift = 1;
+  }
+
+  return {
+    transform: shift !== 0 ? `${transformProp}(${shift * columnSize}px)` : `${transformProp}(0)`,
+    transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
   };
+};
 
-  // Layout Detection
-  useEffect(() => {
-    const el = colorsAreaRef.current;
-    if (!el) return;
+// Updated layout detection - ensure mobile always works correctly
+useEffect(() => {
+  const el = colorsAreaRef.current;
+  if (!el) return;
 
-    const update = () => {
-      const w = el.getBoundingClientRect().width;
-      const perCol = w / Math.max(1, colors.length);
-      setStackColors(perCol < MIN_COL_PX);
-    };
-
-    update();
-
-    let ro;
-    if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(update);
-      ro.observe(el);
-    } else {
-      window.addEventListener('resize', update);
+  const update = () => {
+    // On mobile, don't use stackColors - CSS handles the layout
+    // stackColors is ONLY for desktop narrow-width scenarios
+    if (isMobileView()) {
+      setStackColors(false);
+      return;
     }
 
-    return () => {
-      if (ro) ro.disconnect();
-      else window.removeEventListener('resize', update);
-    };
-  }, [colors.length]);
+    const w = el.getBoundingClientRect().width;
+    const perCol = w / Math.max(1, colors.length);
+    setStackColors(perCol < MIN_COL_PX);
+  };
+
+  update();
+
+  let ro;
+  if (typeof ResizeObserver !== 'undefined') {
+    ro = new ResizeObserver(update);
+    ro.observe(el);
+  } else {
+    window.addEventListener('resize', update);
+  }
+
+  return () => {
+    if (ro) ro.disconnect();
+    else window.removeEventListener('resize', update);
+  };
+}, [colors.length]);
 
   // URL Parsing on Mount
   useEffect(() => {
