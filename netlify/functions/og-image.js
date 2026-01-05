@@ -14,11 +14,17 @@ exports.handler = async (event) => {
 
     const hexArray = colors.split('-');
     
-    // 2. Fetch a font (Satori requires a font file)
-    // We use a lightweight Google Font (Inter) loaded from a CDN
-    const fontData = await fetch(
-      'https://github.com/google/fonts/raw/main/ofl/inter/Inter-Bold.ttf'
-    ).then((res) => res.arrayBuffer());
+// 2. Fetch a font (Satori requires a font file)
+    // Using raw.githubusercontent.com avoids redirect issues
+    const fontResponse = await fetch(
+        'https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter-Bold.ttf'
+      );
+      
+      if (!fontResponse.ok) {
+        throw new Error('Failed to fetch font file');
+      }
+  
+      const fontData = await fontResponse.arrayBuffer();
 
     // 3. Define the HTML structure (using React-like object syntax for Satori)
     // We create a container with a flex row for colors and a footer for the logo
