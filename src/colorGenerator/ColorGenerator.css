@@ -346,6 +346,10 @@
   animation: toolbarBtnPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+.color-column .toolbar-btn:nth-child(1) { opacity: 0; 
+
+}
+
 .color-column:hover .toolbar-btn:nth-child(1) { animation-delay: 0ms; }
 .color-column:hover .toolbar-btn:nth-child(2) { animation-delay: 40ms; }
 .color-column:hover .toolbar-btn:nth-child(3) { animation-delay: 80ms; }
@@ -570,6 +574,33 @@
   }
 }
 
+.seo-content-footer {
+  color: rgba(255, 255, 255, 0.02);
+}
+
+.seo-content-wrapper {
+  color: rgba(255, 255, 255, 0.02);
+}
+
+.seo-main-title {
+  color: rgba(255, 255, 255, 0.02);
+}
+
+.seo-trait-separator {
+  color: rgba(255, 255, 255, 0.02);
+}
+
+.seo-color-reference {
+  color: rgba(255, 255, 255, 0.02);
+}
+
+.seo-section-title {
+  color: rgba(255, 255, 255, 0.02);
+}
+
+
+
+
 .seo-footer-tiny {
   position: absolute;
   bottom: 8px;
@@ -591,6 +622,7 @@
   width: 1px;
   height: 1px;
   padding: 0;
+  color: rgba(0, 0, 0, 0.2); /* Very faint */
   margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
