@@ -422,6 +422,25 @@ const NAV_LINKS = [
   { href: '#faq', label: 'FAQ' },
 ];
 
+const TRENDING_PALETTES = [
+  "4E1730-992852-D8243A-DB8F7B-F2D7C7",
+  "111F4B-2165A0-21A2D5-73D1E8-D9F4F2",
+  "385214-76A219-A5E423-80AE4B-EFF4E6",
+  "3E140F-74371F-D58F23-EEE08F-EFEFD2",
+  "290E1A-9A276A-E32EB0-E696ED-ECD3F3",
+  "144B24-249040-38CE94-F7E3F1-E2719D",
+  "102A38-22978B-46D3C4-71E7C3-CDE9DB",
+  "2A0F16-7F232C-E6253A-DE7E87-EECAD0",
+  "310B12-A02821-DF5341-CCEBEC-7FD5DC",
+  "335115-608F24-D2DC56-E3DC7B-F0EDD1",
+  "102A18-289A5E-41D597-6CEADC-DAF1F5",
+  "445018-7B9723-B8D94E-E3F09D-EAF2CE",
+  "0E1D35-16629D-3EB2E1-8CE8E7-D9F5F4",
+  "39121B-87204B-A72649-4CE0CD",
+  "103C0F-2AA02C-78C57C-EDF7ED",
+  "3C1112-6D301A-BB502A-D36327-E1B56F-E8DA8D-F9F7EB"
+];
+
 function LandingPage() {
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState(null);
@@ -589,6 +608,56 @@ function LandingPage() {
           ))}
         </div>
       </section>
+
+      {/* === NEW: Trending Palettes Section === */}
+      <section className="trending-section">
+        <div className="section-container">
+          <div className="section-header">
+            <span className="section-badge">Inspiration</span>
+            <h2 className="section-title">Trending Color Palettes</h2>
+            <p className="section-subtitle">
+              Hand-picked color combinations to jumpstart your next project.
+            </p>
+          </div>
+
+          <div className="trending-grid">
+            {TRENDING_PALETTES.map((paletteString, index) => {
+              // Split the string into individual hex codes
+              const colors = paletteString.split('-');
+              
+              return (
+                <a 
+                  key={index} 
+                  href={`/${paletteString}`}
+                  className="palette-card"
+                  aria-label={`Open palette ${paletteString}`}
+                >
+                  <div className="palette-preview">
+                    {colors.map((hex, i) => (
+                      <div 
+                        key={i} 
+                        className="palette-stripe" 
+                        style={{ backgroundColor: `#${hex}` }} 
+                      />
+                    ))}
+                  </div>
+                  <div className="palette-info">
+                    <span className="palette-name">#{colors[0]}</span>
+                    <div className="palette-arrow">
+                      <ArrowRight size={16} />
+                    </div>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+          
+          <div className="cta-center" style={{ marginTop: 'var(--space-8)' }}>
+             <a href="/explore" className="btn-secondary">Browse All Palettes</a>
+          </div>
+        </div>
+      </section>
+      {/* === END NEW SECTION === */}
 
       {/* Features Section */}
       <section id="features" className="features-section">

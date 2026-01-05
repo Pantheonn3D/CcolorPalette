@@ -527,9 +527,25 @@
   .seo-main-title,
   .seo-trait-separator,
   .seo-color-reference,
+  .seo-related-links,
   .seo-section-title {
     color: rgba(255, 255, 255, 0.02);
+    text-decoration: none;
   }
+
+  /* Target the links specifically */
+.seo-related-links a {
+  color: inherit;         /* Forces link to use the parent's faint white color */
+  text-decoration: none;  /* Removes the underline */
+  margin-right: 12px;     /* Adds a little space between the links */
+  display: inline-block;  /* Helps with spacing */
+}
+
+/* Optional: Add a slight hover effect so you (the admin) can find them */
+.seo-related-links a:hover {
+  text-decoration: underline;
+  opacity: 1; /* Makes it fully visible on hover */
+}
   
   .seo-footer-tiny {
     position: absolute;

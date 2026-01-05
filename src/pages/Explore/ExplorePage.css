@@ -1,0 +1,100 @@
+.explore-page {
+    min-height: 100vh;
+    background: var(--color-bg-card);
+  }
+  
+  .explore-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--color-border-subtle);
+    padding: var(--space-3) 0;
+  }
+  
+  .explore-main {
+    padding: var(--space-12) 0;
+  }
+  
+  .explore-hero {
+    text-align: center;
+    margin-bottom: var(--space-12);
+  }
+  
+  .search-wrapper {
+    max-width: 500px;
+    margin: var(--space-8) auto 0;
+    position: relative;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: var(--space-3) var(--space-4) var(--space-3) var(--space-10);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--font-base);
+    background: var(--color-bg-panel);
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+  }
+  
+  /* THE GRID - Optimized for many items */
+  .explore-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: var(--space-4);
+    /* Performance optimization for huge lists */
+    content-visibility: auto; 
+    contain-intrinsic-size: 100px; 
+  }
+  
+  .mini-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    text-decoration: none;
+    background: var(--color-bg-panel);
+    border: 1px solid var(--color-border-subtle);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .mini-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border);
+  }
+  
+  .mini-preview {
+    height: 80px;
+    display: flex;
+    width: 100%;
+  }
+  
+  .mini-stripe {
+    flex: 1;
+    height: 100%;
+  }
+  
+  .mini-label {
+    padding: var(--space-2) var(--space-3);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    text-align: center;
+  }
+  
+  .explore-footer {
+    text-align: center;
+    padding: var(--space-8);
+    border-top: 1px solid var(--color-border-subtle);
+    color: var(--color-text-muted);
+    font-size: var(--font-xs);
+  }

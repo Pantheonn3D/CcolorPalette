@@ -6,6 +6,7 @@ import ColorGenerator from './colorGenerator/ColorGenerator';
 import LandingPage from './pages/LandingPage/LandingPage';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
 import TermsOfService from './pages/Legal/TermsOfService';
+import ExplorePage from './pages/Explore/ExplorePage';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/" element={<ColorGenerator />} />
           <Route path="/:hexCodes" element={<ColorGenerator />} />
+          <Route path="/explore" element={<ExplorePage />} />
         </Routes>
       </Router>
     </HelmetProvider>

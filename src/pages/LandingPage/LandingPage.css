@@ -450,6 +450,103 @@
     color: rgba(255, 255, 255, 0.6);
     margin-top: var(--space-1);
   }
+
+  /* ============================================
+   TRENDING PALETTES SECTION
+   ============================================ */
+
+.trending-section {
+  padding: var(--space-20) 0;
+  background: var(--color-bg-panel); /* Slight contrast from hero */
+}
+
+.trending-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.palette-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  text-decoration: none;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  border: 1px solid var(--color-border-subtle);
+  height: 180px; /* Fixed height for uniformity */
+}
+
+.palette-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-border);
+}
+
+.palette-preview {
+  flex: 1;
+  display: flex;
+  width: 100%;
+}
+
+.palette-stripe {
+  flex: 1;
+  height: 100%;
+}
+
+/* Specific logic to make the first and last colors slightly wider 
+   looks better visually */
+.palette-stripe:first-child {
+  flex: 1.2;
+}
+.palette-stripe:last-child {
+  flex: 1.2;
+}
+
+.palette-info {
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-bg-card);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.palette-name {
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.palette-arrow {
+  color: var(--color-text-muted);
+  transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.palette-card:hover .palette-arrow {
+  color: var(--color-text-primary);
+  transform: translateX(4px);
+}
+
+@media (max-width: 768px) {
+  .trending-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile */
+    gap: var(--space-4);
+  }
+  
+  .palette-card {
+    height: 140px; /* Shorter on mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .trending-grid {
+    grid-template-columns: 1fr; /* 1 column on very small screens */
+  }
+}
   
   /* ============================================
      FEATURES SECTION

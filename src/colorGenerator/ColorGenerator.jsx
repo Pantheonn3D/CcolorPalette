@@ -161,7 +161,11 @@ function ColorGenerator() {
   };
 
   // URL Helpers
-  const getCurrentUrl = () => (typeof window === 'undefined' ? '' : window.location.href);
+  const getCurrentUrl = useCallback(() => {
+    if (typeof window === 'undefined') return '';
+    const hexPath = colors.map(c => c.hex.replace('#', '')).join('-');
+    return `${window.location.origin}/${hexPath}`;
+  }, [colors]);
 
   const getShareUrl = useCallback(() => {
     const hexes = colors.map((c) => c.hex.replace('#', '')).join('-');
@@ -723,8 +727,19 @@ useEffect(() => {
     [currentHexes, generationMode, constraints.mood]
   );
 
-  const currentCanonical = typeof window !== 'undefined' ? window.location.href : '';
+  const currentCanonical = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const hexPath = colors.map(c => c.hex.replace('#', '')).join('-');
+    return `${window.location.origin}/${hexPath}`;
+  }, [colors]);
   const contentSections = useMemo(() => formatContentSections(seoData.content), [seoData.content]);
+
+  const ogImageUrl = useMemo(() => {
+    if (typeof window === 'undefined') return 'https://ccolorpalette.com/og-image.png'; // Fallback
+    const hexPath = colors.map(c => c.hex.replace('#', '')).join('-');
+    // Point to the Netlify function
+    return `${window.location.origin}/.netlify/functions/og-image?colors=${hexPath}`;
+  }, [colors]);
 
   const structuredData = useMemo(() => {
     const colorItems = colors.map((c, index) => {
@@ -768,14 +783,17 @@ useEffect(() => {
         {seoData.keywords?.length > 0 && (
           <meta name="keywords" content={seoData.keywords.slice(0, 10).join(', ')} />
         )}
-        <meta property="og:title" content={seoData.title} />
+        <meta property="og:image" content={ogImageUrl} />
         <meta property="og:description" content={seoData.meta} />
         <meta property="og:url" content={currentCanonical} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="CcolorPalette" />
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content={ogImageUrl} />
         <meta name="twitter:title" content={seoData.title} />
         <meta name="twitter:description" content={seoData.meta} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta name="robots" content="index, follow" />
         <meta name="author" content="CcolorPalette" />
         <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
@@ -1065,23 +1083,23 @@ useEffect(() => {
             </div>
           )}
 
-          <div className="sr-only">
-            <div className="seo-related-links">
-              <h3 className="seo-section-title">Explore Related Palettes</h3>
-              <div>
-                {Array.from({ length: 6 }).map((_, i) => {
-                  const randomHexes = generateRandomPalette('auto', 5 + Math.floor(Math.random() * 3), {}).map((h) =>
-                    h.replace('#', '')
-                  );
-                  return (
-                    <a key={i} href={`/${randomHexes.join('-')}`}>
-                      Generated Palette {i + 1}
-                    </a>
-                  );
-                })}
-              </div>
+          
+          <div className="seo-related-links">
+            <h3 className="seo-section-title">Explore Related Palettes</h3>
+            <div>
+              {Array.from({ length: 6 }).map((_, i) => {
+                const randomHexes = generateRandomPalette('auto', 5 + Math.floor(Math.random() * 3), {}).map((h) =>
+                  h.replace('#', '')
+                );
+                return (
+                  <a key={i} href={`/${randomHexes.join('-')}`}>
+                    Generated Palette {i + 1}
+                  </a>
+                );
+              })}
             </div>
           </div>
+          
 
           <div className="seo-color-reference">
             <h2 className="seo-section-title">Color Values</h2>
