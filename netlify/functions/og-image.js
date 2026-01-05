@@ -21,7 +21,7 @@ exports.handler = async (event) => {
 
     const hexArray = colors.split('-');
     
-    // 1. FETCH FONT (Inter Bold)
+    // 1. FETCH FONT (Using Unpkg for stability)
     const fontUrl = 'https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-700-normal.woff';
     const fontResponse = await fetch(fontUrl);
 
@@ -37,42 +37,86 @@ exports.handler = async (event) => {
       props: {
         style: {
           display: 'flex',
-          flexDirection: 'row', // Horizontal layout
+          flexDirection: 'column', // Vertical stack: Colors on top, Footer on bottom
           width: '100%',
           height: '100%',
           backgroundColor: '#ffffff',
         },
-        children: hexArray.map((hex) => ({
-          type: 'div',
-          props: {
-            style: {
-              display: 'flex',
-              flex: 1, // Each color takes equal width
-              height: '100%',
-              backgroundColor: '#' + hex,
-              flexDirection: 'column',
-              justifyContent: 'flex-end', // Push text to bottom
-              alignItems: 'center',       // Center text horizontally
-              paddingBottom: 40,          // Space from bottom
-            },
-            children: [
-              {
-                type: 'span',
+        children: [
+          // A. Color Stripes Section (Top 85%)
+          {
+            type: 'div',
+            props: {
+              style: {
+                display: 'flex',
+                flexDirection: 'row',
+                width: '100%',
+                height: '85%', 
+              },
+              children: hexArray.map((hex) => ({
+                type: 'div',
                 props: {
                   style: {
-                    fontFamily: 'Inter',
-                    fontSize: 28, // Large, readable font
-                    fontWeight: 700,
-                    letterSpacing: '-0.02em',
-                    color: getContrastColor(hex), // Dynamic text color
-                    textTransform: 'uppercase',
+                    display: 'flex',
+                    flex: 1,
+                    height: '100%',
+                    backgroundColor: '#' + hex,
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end', // Push hex code to bottom of stripe
+                    alignItems: 'center',
+                    paddingBottom: 24,          // Padding above the footer
                   },
-                  children: '#' + hex,
+                  children: [
+                    {
+                      type: 'span',
+                      props: {
+                        style: {
+                          fontFamily: 'Inter',
+                          fontSize: 26,
+                          fontWeight: 700,
+                          letterSpacing: '-0.02em',
+                          color: getContrastColor(hex), // Dynamic contrast
+                          textTransform: 'uppercase',
+                        },
+                        children: '#' + hex,
+                      },
+                    }
+                  ],
                 },
-              }
-            ],
+              })),
+            },
           },
-        })),
+          // B. Footer Watermark Section (Bottom 15%)
+          {
+            type: 'div',
+            props: {
+              style: {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                height: '15%',
+                backgroundColor: '#ffffff',
+                borderTop: '1px solid #f0f0f0', // Subtle separation line
+              },
+              children: [
+                {
+                  type: 'span',
+                  props: {
+                    style: {
+                      fontFamily: 'Inter',
+                      fontSize: 32,
+                      fontWeight: 700,
+                      letterSpacing: '-0.03em',
+                      color: '#161616', // The requested color
+                    },
+                    children: 'ccolorpalette.com',
+                  },
+                },
+              ],
+            },
+          },
+        ],
       },
     };
 
