@@ -36,16 +36,32 @@
     gap: var(--space-6);
   }
   
-  .header-logo {
+/* ============================================
+   HEADER LOGO
+   ============================================ */
+
+   .header-logo {
     display: flex;
     align-items: center;
     gap: var(--space-3);
     text-decoration: none;
   }
   
+  .header-logo-img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+  }
+  
+  .header-logo-text {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+  
+  /* Remove the old logo-mark styles or keep them as fallback */
   .header-logo-mark {
-    display: flex;
-    gap: 3px;
+    display: none; /* Hide the old colored bars */
   }
   
   .header-logo-mark span {
@@ -886,42 +902,157 @@
     line-height: var(--leading-normal);
   }
   
-  /* ============================================
-     COMPARISON SECTION
-     ============================================ */
-  
-  .comparison-section {
+/* ============================================
+   COMPARISON SECTION - FIXED OVERFLOW
+   ============================================ */
+
+   .comparison-section {
     padding: var(--space-20) 0;
+    /* Prevent this section from causing page overflow */
+    overflow: hidden;
   }
   
   .comparison-table-wrapper {
     position: relative;
+    max-width: 100%;
     overflow-x: auto;
-    margin: 0 calc(var(--space-6) * -1);
-    padding: 0 var(--space-6);
     -webkit-overflow-scrolling: touch;
+    
+    /* Add padding so shadows don't get clipped */
+    padding-bottom: var(--space-2);
+    margin-bottom: calc(var(--space-2) * -1);
   }
   
-  /* Scroll hint shadows */
-  .scroll-hint {
-    display: none;
+  /* Scroll hint shadows - fade indicators */
+  .comparison-table-wrapper::before,
+  .comparison-table-wrapper::after {
+    content: '';
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 40px;
+    width: 24px;
     pointer-events: none;
     z-index: 2;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
   }
   
-  .scroll-hint-left {
+  .comparison-table-wrapper::before {
     left: 0;
     background: linear-gradient(to right, var(--color-bg-card) 0%, transparent 100%);
   }
   
-  .scroll-hint-right {
+  .comparison-table-wrapper::after {
     right: 0;
     background: linear-gradient(to left, var(--color-bg-card) 0%, transparent 100%);
   }
+  
+  /* Show right shadow by default on mobile (indicates scrollable) */
+  @media (max-width: 768px) {
+    .comparison-table-wrapper::after {
+      opacity: 1;
+    }
+  }
+  
+  .comparison-table {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: collapse;
+    background: var(--color-bg-card);
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+  }
+  
+  .comparison-table th,
+  .comparison-table td {
+    padding: var(--space-4);
+    text-align: center;
+    border-bottom: 1px solid var(--color-border-subtle);
+    white-space: nowrap;
+  }
+  
+  .comparison-table th {
+    background: var(--color-bg-panel);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+  
+  .comparison-table th:first-child {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--color-bg-panel);
+  }
+  
+  .comparison-table td:first-child {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--color-bg-card);
+  }
+  
+  .comparison-table td.feature-cell {
+    color: var(--color-text-primary);
+    font-weight: 500;
+    white-space: normal;
+    min-width: 180px;
+  }
+  
+  .comparison-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .comparison-table tbody tr:hover td {
+    background: var(--color-bg-panel);
+  }
+  
+  .comparison-table tbody tr:hover td:first-child {
+    background: var(--color-bg-panel);
+  }
+  
+  .table-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+  }
+  
+  .table-brand.ours {
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+  
+  .check-yes {
+    color: #22c55e;
+  }
+  
+  .check-no {
+    color: #d1d5db;
+  }
+
+  /* Mobile adjustments */
+@media (max-width: 768px) {
+  .comparison-table th,
+  .comparison-table td {
+    padding: var(--space-3);
+    font-size: var(--font-xs);
+  }
+
+  .comparison-table td.feature-cell {
+    min-width: 140px;
+    font-size: var(--font-xs);
+  }
+
+  .comparison-table th:first-child,
+  .comparison-table td:first-child {
+    /* Add shadow to sticky column to indicate it's floating */
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+  }
+}
   
   @media (max-width: 768px) {
     .scroll-hint {
@@ -1234,16 +1365,32 @@
     max-width: 300px;
   }
   
-  .footer-logo {
+/* ============================================
+   FOOTER LOGO
+   ============================================ */
+
+   .footer-logo {
     display: flex;
     align-items: center;
     gap: var(--space-3);
     margin-bottom: var(--space-3);
   }
   
+  .footer-logo-img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+  }
+  
+  .footer-logo-text {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--color-text-white);
+  }
+  
+  /* Hide old footer logo mark */
   .footer-logo-mark {
-    display: flex;
-    gap: 3px;
+    display: none;
   }
   
   .footer-logo-mark span {

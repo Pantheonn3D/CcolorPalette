@@ -1,6 +1,7 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
+import logo from '../../assets/Frame4ico.png';
 import {
   FileText,
   CheckCircle,
@@ -299,14 +300,10 @@ function TermsOfService() {
       {/* Header */}
       <header className="legal-header">
         <div className="legal-header-container">
-          <Link to="/home" className="legal-logo">
-            <div className="legal-logo-mark">
-              <span style={{ backgroundColor: '#E63946' }}></span>
-              <span style={{ backgroundColor: '#F1FAEE' }}></span>
-              <span style={{ backgroundColor: '#457B9D' }}></span>
-            </div>
-            <span className="legal-logo-text">CColorPalette</span>
-          </Link>
+            <Link to="/home" className="header-logo">
+                <img src={logo} alt="CColorPalette" className="header-logo-img" />
+                <span className="header-logo-text">CColorPalette</span>
+            </Link>
 
           <Link to="/home" className="legal-back-link">
             <ArrowLeft size={18} />

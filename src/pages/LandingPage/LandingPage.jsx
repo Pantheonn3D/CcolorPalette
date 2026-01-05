@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import logo from '../../assets/Frame4ico.png';
 import {
   // Only import icons we actually use
   Sparkles,
@@ -454,14 +455,10 @@ function LandingPage() {
       {/* Header */}
       <header className="landing-header">
         <div className="header-container">
-          <Link to="/" className="header-logo">
-            <div className="header-logo-mark">
-              <span style={{ backgroundColor: '#E63946' }}></span>
-              <span style={{ backgroundColor: '#F1FAEE' }}></span>
-              <span style={{ backgroundColor: '#457B9D' }}></span>
-            </div>
-            <span className="header-logo-text">CColorPalette</span>
-          </Link>
+        <Link to="/" className="header-logo">
+          <img src={logo} alt="CColorPalette" className="header-logo-img" />
+          <span className="header-logo-text">CColorPalette</span>
+        </Link>
 
           {/* Desktop Navigation */}
           <nav className="header-nav">
@@ -857,8 +854,7 @@ function LandingPage() {
           </div>
 
           <div className="comparison-table-wrapper">
-            <div className="scroll-hint scroll-hint-left"></div>
-            <div className="scroll-hint scroll-hint-right"></div>
+            {/* Removed the scroll-hint divs - using CSS pseudo-elements instead */}
             <table className="comparison-table">
               <thead>
                 <tr>
@@ -1020,14 +1016,10 @@ function LandingPage() {
         <div className="footer-container">
           <div className="footer-main">
             <div className="footer-brand">
-              <div className="footer-logo">
-                <div className="footer-logo-mark">
-                  <span style={{ backgroundColor: '#E63946' }}></span>
-                  <span style={{ backgroundColor: '#F1FAEE' }}></span>
-                  <span style={{ backgroundColor: '#457B9D' }}></span>
-                </div>
-                <span className="footer-logo-text">CColorPalette</span>
-              </div>
+            <div className="footer-logo">
+              <img src={logo} alt="CColorPalette" className="footer-logo-img" />
+              <span className="footer-logo-text">CColorPalette</span>
+            </div>
               <p className="footer-tagline">
                 The free color palette generator for designers and developers.
               </p>
