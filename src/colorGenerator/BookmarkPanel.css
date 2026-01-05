@@ -1,11 +1,13 @@
-/* Bookmark Panel Specific Styles */
+/* ============================================
+   BOOKMARK PANEL
+   ============================================ */
 
-.bookmark-main {
+   .bookmark-main {
     text-align: center;
-    padding: 24px 16px;
-    background: white;
-    border-radius: 12px;
-    margin-bottom: 24px;
+    padding: var(--space-6) var(--space-4);
+    background: var(--color-bg-card);
+    border-radius: var(--radius-2xl);
+    margin-bottom: var(--space-6);
   }
   
   .bookmark-icon-large {
@@ -14,41 +16,41 @@
     justify-content: center;
     width: 64px;
     height: 64px;
-    background: #f0f0f0;
-    border-radius: 50%;
-    margin-bottom: 16px;
-    color: #161616;
+    background: var(--color-bg-hover);
+    border-radius: var(--radius-full);
+    margin-bottom: var(--space-4);
+    color: var(--color-text-primary);
   }
   
   .bookmark-main h3 {
     font-size: var(--font-lg);
     font-weight: 700;
-    color: #161616;
-    margin: 0 0 8px 0;
+    color: var(--color-text-primary);
+    margin: 0 0 var(--space-2) 0;
   }
   
   .bookmark-main p {
     font-size: var(--font-sm);
-    color: #666;
+    color: var(--color-text-secondary);
     margin: 0;
-    line-height: 1.5;
+    line-height: var(--leading-normal);
   }
   
-  /* Shortcut box */
+  /* === SHORTCUT BOX === */
   .bookmark-shortcut-box {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
-    padding: 20px;
-    background: white;
-    border-radius: 12px;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--color-bg-card);
+    border-radius: var(--radius-2xl);
   }
   
   .bookmark-keys {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
   }
   
   .bookmark-keys kbd {
@@ -57,10 +59,10 @@
     justify-content: center;
     min-width: 44px;
     height: 40px;
-    padding: 0 12px;
-    background: #161616;
-    color: white;
-    border-radius: 8px;
+    padding: 0 var(--space-3);
+    background: var(--color-text-primary);
+    color: var(--color-text-white);
+    border-radius: var(--radius-lg);
     font-family: inherit;
     font-size: var(--font-base);
     font-weight: 600;
@@ -69,34 +71,34 @@
   
   .bookmark-keys span {
     font-size: var(--font-lg);
-    color: #999;
+    color: var(--color-text-faint);
     font-weight: 500;
   }
   
   .bookmark-shortcut-label {
     font-size: var(--font-sm);
-    color: #666;
+    color: var(--color-text-secondary);
   }
   
-  /* URL box */
+  /* === URL BOX === */
   .bookmark-url-box {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px;
-    background: white;
-    border-radius: 10px;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: var(--color-bg-card);
+    border-radius: var(--radius-xl);
     overflow: hidden;
   }
   
   .bookmark-url {
     flex: 1;
     font-size: 11px;
-    color: #666;
+    color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-family: monospace;
+    font-family: var(--font-mono);
   }
   
   .bookmark-copy-btn {
@@ -106,32 +108,32 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    background: #f0f0f0;
+    background: var(--color-bg-hover);
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    color: #666;
-    transition: all 0.15s ease;
+    color: var(--color-text-secondary);
+    transition: all var(--transition-fast);
   }
   
   .bookmark-copy-btn:hover {
-    background: #161616;
-    color: white;
+    background: var(--color-text-primary);
+    color: var(--color-text-white);
   }
   
   .bookmark-copy-btn.copied {
-    background: #161616;
-    color: white;
+    background: var(--color-text-primary);
+    color: var(--color-text-white);
   }
   
-  /* Steps */
+  /* === STEPS === */
   .bookmark-step {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    padding: 12px;
-    background: white;
-    border-radius: 10px;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-bg-card);
+    border-radius: var(--radius-xl);
   }
   
   .bookmark-step-num {
@@ -140,32 +142,32 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    background: #f0f0f0;
-    border-radius: 50%;
+    background: var(--color-bg-hover);
+    border-radius: var(--radius-full);
     font-size: var(--font-xs);
     font-weight: 700;
-    color: #161616;
+    color: var(--color-text-primary);
     flex-shrink: 0;
   }
   
   .bookmark-step span:last-child {
-    font-size: var(--font-sm); 
-    color: #666;
-    line-height: 1.5;
+    font-size: var(--font-sm);
+    color: var(--color-text-secondary);
+    line-height: var(--leading-normal);
     padding-top: 2px;
   }
   
-  /* Tip */
+  /* === TIP === */
   .bookmark-tip {
-    padding: 16px;
-    background: #161616;
-    color: white;
-    border-radius: 12px;
+    padding: var(--space-4);
+    background: var(--color-text-primary);
+    color: var(--color-text-white);
+    border-radius: var(--radius-2xl);
     font-size: var(--font-sm);
-    line-height: 1.5;
+    line-height: var(--leading-normal);
   }
   
   .bookmark-tip strong {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-1);
   }

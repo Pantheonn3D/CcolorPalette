@@ -1,26 +1,24 @@
 import { X, Sparkles } from 'lucide-react';
 import '../styles/PanelStyles.css';
 
-const modes = [
+const HARMONY_MODES = [
   { id: 'auto', label: 'Auto', description: 'Random harmony' },
   { id: 'mono', label: 'Monochromatic', description: 'Single hue variations' },
   { id: 'analogous', label: 'Analogous', description: 'Adjacent hues' },
   { id: 'complementary', label: 'Complementary', description: 'Opposite hues' },
-  {
-    id: 'splitComplementary',
-    label: 'Split Comp.',
-    description: 'Opposite + adjacent',
-  },
+  { id: 'splitComplementary', label: 'Split Comp.', description: 'Opposite + adjacent' },
   { id: 'triadic', label: 'Triadic', description: 'Three-way split' },
 ];
 
-const moods = [
+const MOOD_OPTIONS = [
   { id: 'any', label: 'Any' },
   { id: 'muted', label: 'Muted' },
   { id: 'pastel', label: 'Pastel' },
   { id: 'vibrant', label: 'Vibrant' },
   { id: 'dark', label: 'Dark' },
 ];
+
+const PANEL_WIDTH = 240;
 
 function MethodPanel({
   isOpen,
@@ -30,12 +28,24 @@ function MethodPanel({
   constraints,
   onConstraintsChange,
 }) {
+  const handleMoodChange = (mood) => {
+    onConstraintsChange({ ...constraints, mood });
+  };
+
+  const handleContrastChange = (e) => {
+    onConstraintsChange({ ...constraints, minContrast: Number(e.target.value) });
+  };
+
+  const handleDarkModeToggle = () => {
+    onConstraintsChange({ ...constraints, darkModeFriendly: !constraints.darkModeFriendly });
+  };
+
   return (
     <div
       className={`panel-column ${isOpen ? 'open' : ''}`}
-      style={{ flexBasis: isOpen ? '240px' : '0px' }}
+      style={{ flexBasis: isOpen ? `${PANEL_WIDTH}px` : '0px' }}
     >
-      <div className="panel-inner" style={{ width: '240px' }}>
+      <div className="panel-inner" style={{ width: `${PANEL_WIDTH}px` }}>
         <div className="panel-header">
           <div className="panel-title">
             <Sparkles size={18} />
@@ -47,15 +57,14 @@ function MethodPanel({
         </div>
 
         <div className="panel-scroll">
+          {/* Harmony Section */}
           <div className="panel-section">
             <label className="panel-label">Harmony</label>
             <div className="panel-list">
-              {modes.map((mode) => (
+              {HARMONY_MODES.map((mode) => (
                 <button
                   key={mode.id}
-                  className={`panel-list-item ${
-                    value === mode.id ? 'selected' : ''
-                  }`}
+                  className={`panel-list-item ${value === mode.id ? 'selected' : ''}`}
                   onClick={(e) => {
                     onChange(mode.id);
                     e.currentTarget.blur();
@@ -63,9 +72,7 @@ function MethodPanel({
                 >
                   <div className="panel-list-item-content">
                     <span className="panel-list-item-title">{mode.label}</span>
-                    <span className="panel-list-item-desc">
-                      {mode.description}
-                    </span>
+                    <span className="panel-list-item-desc">{mode.description}</span>
                   </div>
                   {value === mode.id && <div className="panel-check" />}
                 </button>
@@ -73,17 +80,16 @@ function MethodPanel({
             </div>
           </div>
 
+          {/* Mood Section */}
           <div className="panel-section">
             <label className="panel-label">Mood</label>
             <div className="panel-btn-grid">
-              {moods.map((mood) => (
+              {MOOD_OPTIONS.map((mood) => (
                 <button
                   key={mood.id}
-                  className={`panel-btn ${
-                    constraints.mood === mood.id ? 'active' : ''
-                  }`}
+                  className={`panel-btn ${constraints.mood === mood.id ? 'active' : ''}`}
                   onClick={(e) => {
-                    onConstraintsChange({ ...constraints, mood: mood.id });
+                    handleMoodChange(mood.id);
                     e.currentTarget.blur();
                   }}
                 >
@@ -93,6 +99,7 @@ function MethodPanel({
             </div>
           </div>
 
+          {/* Contrast Section */}
           <div className="panel-section">
             <label className="panel-label">
               Min Adjacent Contrast
@@ -104,12 +111,7 @@ function MethodPanel({
               max="4.5"
               step="0.1"
               value={constraints.minContrast}
-              onChange={(e) =>
-                onConstraintsChange({
-                  ...constraints,
-                  minContrast: Number(e.target.value),
-                })
-              }
+              onChange={handleContrastChange}
               className="panel-slider"
             />
             <div className="panel-slider-labels">
@@ -118,16 +120,12 @@ function MethodPanel({
             </div>
           </div>
 
+          {/* Dark Mode Toggle */}
           <div className="panel-section">
             <button
-              className={`panel-toggle ${
-                constraints.darkModeFriendly ? 'active' : ''
-              }`}
+              className={`panel-toggle ${constraints.darkModeFriendly ? 'active' : ''}`}
               onClick={(e) => {
-                onConstraintsChange({
-                  ...constraints,
-                  darkModeFriendly: !constraints.darkModeFriendly,
-                });
+                handleDarkModeToggle();
                 e.currentTarget.blur();
               }}
             >

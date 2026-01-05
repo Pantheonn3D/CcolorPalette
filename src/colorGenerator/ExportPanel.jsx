@@ -15,38 +15,18 @@ import { hexToHsl } from '../utils/colorUtils';
 import '../styles/PanelStyles.css';
 import './ExportPanel.css';
 
-// Naming schemes
-const namingSchemes = {
+const PANEL_WIDTH = 320;
+
+const NAMING_SCHEMES = {
   numbered: (i) => `color-${i + 1}`,
   semantic: (i) =>
-    [
-      'primary',
-      'secondary',
-      'tertiary',
-      'accent',
-      'highlight',
-      'muted',
-      'subtle',
-      'background',
-      'surface',
-      'border',
-    ][i] || `color-${i + 1}`,
+    ['primary', 'secondary', 'tertiary', 'accent', 'highlight', 'muted', 'subtle', 'background', 'surface', 'border'][i] ||
+    `color-${i + 1}`,
   palette: (i) =>
-    [
-      'base',
-      'light',
-      'dark',
-      'accent-1',
-      'accent-2',
-      'neutral-1',
-      'neutral-2',
-      'neutral-3',
-      'neutral-4',
-      'neutral-5',
-    ][i] || `color-${i + 1}`,
+    ['base', 'light', 'dark', 'accent-1', 'accent-2', 'neutral-1', 'neutral-2', 'neutral-3', 'neutral-4', 'neutral-5'][i] ||
+    `color-${i + 1}`,
 };
 
-// Calculate contrast ratio
 const getContrastRatio = (hex1, hex2) => {
   const getLuminance = (hex) => {
     const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -67,42 +47,33 @@ function ExportPanel({
   colors,
   generationMode,
   constraints,
-  colorBlindMode,
 }) {
   const [copiedOption, setCopiedOption] = useState(null);
   const [namingScheme, setNamingScheme] = useState('numbered');
   const [showSettings, setShowSettings] = useState(false);
-  const [cssFormat, setCssFormat] = useState('vars'); // 'vars' | 'classes'
-  const [tailwindFormat, setTailwindFormat] = useState('extend'); // 'extend' | 'layer'
+  const [cssFormat, setCssFormat] = useState('vars');
+  const [tailwindFormat, setTailwindFormat] = useState('extend');
+
+  const hexColors = colors.map((c) => c.hex);
+  const getName = NAMING_SCHEMES[namingScheme];
 
   const showCopied = (option) => {
     setCopiedOption(option);
     setTimeout(() => setCopiedOption(null), 2000);
   };
 
-  const hexColors = colors.map((c) => c.hex);
-  const getName = namingSchemes[namingScheme];
-
-  // Generate rich color data
-  const getColorData = () => {
-    return hexColors.map((hex, i) => {
+  const getColorData = () =>
+    hexColors.map((hex, i) => {
       const hsl = hexToHsl(hex);
       return {
         name: getName(i),
         hex,
-        hsl: {
-          h: Math.round(hsl.h),
-          s: Math.round(hsl.s),
-          l: Math.round(hsl.l),
-        },
-        hslString: `hsl(${Math.round(hsl.h)}, ${Math.round(
-          hsl.s
-        )}%, ${Math.round(hsl.l)}%)`,
+        hsl: { h: Math.round(hsl.h), s: Math.round(hsl.s), l: Math.round(hsl.l) },
+        hslString: `hsl(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)`,
         contrastOnWhite: getContrastRatio(hex, '#FFFFFF'),
         contrastOnBlack: getContrastRatio(hex, '#000000'),
       };
     });
-  };
 
   const exportOptions = [
     {
@@ -113,8 +84,6 @@ function ExportPanel({
       action: () => {
         const url = window.chromaAPI?.getShareUrl() || window.location.href;
         navigator.clipboard.writeText(url);
-        const urlObj = new URL(url);
-        window.history.replaceState({}, '', urlObj.pathname + urlObj.search);
         showCopied('url');
       },
     },
@@ -126,17 +95,10 @@ function ExportPanel({
       action: () => {
         let css;
         if (cssFormat === 'vars') {
-          css = `:root {\n${hexColors
-            .map((c, i) => `  --${getName(i)}: ${c};`)
-            .join('\n')}\n}`;
+          css = `:root {\n${hexColors.map((c, i) => `  --${getName(i)}: ${c};`).join('\n')}\n}`;
         } else {
           css = hexColors
-            .map(
-              (c, i) =>
-                `.bg-${getName(i)} { background-color: ${c}; }\n.text-${getName(
-                  i
-                )} { color: ${c}; }`
-            )
+            .map((c, i) => `.bg-${getName(i)} { background-color: ${c}; }\n.text-${getName(i)} { color: ${c}; }`)
             .join('\n\n');
         }
         navigator.clipboard.writeText(css);
@@ -147,8 +109,7 @@ function ExportPanel({
       id: 'tailwind',
       icon: Wind,
       label: 'Tailwind',
-      description:
-        tailwindFormat === 'extend' ? 'Config extend' : '@layer base',
+      description: tailwindFormat === 'extend' ? 'Config extend' : '@layer base',
       action: () => {
         let config;
         if (tailwindFormat === 'extend') {
@@ -175,9 +136,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-${hexColors
-  .map((c, i) => `        '${getName(i)}': 'var(--${getName(i)})',`)
-  .join('\n')}
+${hexColors.map((c, i) => `        '${getName(i)}': 'var(--${getName(i)})',`).join('\n')}
       },
     },
   },
@@ -244,30 +203,17 @@ ${hexColors.map((c, i) => `  '${getName(i)}': ${c},`).join('\n')}
       description: 'Vector graphic',
       action: () => {
         const width = 1200;
-        const height = 630; // Social media preview size
+        const height = 630;
         const colorWidth = width / hexColors.length;
 
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
-  <!-- Background colors -->
-${hexColors
-  .map(
-    (c, i) =>
-      `  <rect x="${
-        i * colorWidth
-      }" y="0" width="${colorWidth}" height="${height}" fill="${c}"/>`
-  )
-  .join('\n')}
-  <!-- Color labels -->
-${hexColors
-  .map((c, i) => {
-    const hsl = hexToHsl(c);
-    const textColor = hsl.l > 60 ? '#000000' : '#FFFFFF';
-    const x = i * colorWidth + colorWidth / 2;
-    return `  <text x="${x}" y="${
-      height - 30
-    }" text-anchor="middle" fill="${textColor}" font-family="monospace" font-size="14" font-weight="bold">${c}</text>`;
-  })
-  .join('\n')}
+${hexColors.map((c, i) => `  <rect x="${i * colorWidth}" y="0" width="${colorWidth}" height="${height}" fill="${c}"/>`).join('\n')}
+${hexColors.map((c, i) => {
+  const hsl = hexToHsl(c);
+  const textColor = hsl.l > 60 ? '#000000' : '#FFFFFF';
+  const x = i * colorWidth + colorWidth / 2;
+  return `  <text x="${x}" y="${height - 30}" text-anchor="middle" fill="${textColor}" font-family="monospace" font-size="14" font-weight="bold">${c}</text>`;
+}).join('\n')}
 </svg>`;
 
         const blob = new Blob([svg], { type: 'image/svg+xml' });
@@ -288,17 +234,15 @@ ${hexColors
       action: () => {
         const canvas = document.createElement('canvas');
         canvas.width = 1200;
-        canvas.height = 630; // OG image size
+        canvas.height = 630;
         const ctx = canvas.getContext('2d');
         const colorWidth = canvas.width / hexColors.length;
 
-        // Draw colors
         hexColors.forEach((color, i) => {
           ctx.fillStyle = color;
           ctx.fillRect(i * colorWidth, 0, colorWidth, canvas.height);
         });
 
-        // Draw hex labels
         ctx.font = 'bold 16px monospace';
         ctx.textAlign = 'center';
         hexColors.forEach((color, i) => {
@@ -308,15 +252,10 @@ ${hexColors
           ctx.fillText(color, x, canvas.height - 30);
         });
 
-        // Add subtle branding
         ctx.font = '12px sans-serif';
         ctx.fillStyle = 'rgba(255,255,255,0.7)';
         ctx.textAlign = 'right';
-        ctx.fillText(
-          'ccolorpalette.com',
-          canvas.width - 20,
-          canvas.height - 12
-        );
+        ctx.fillText('ccolorpalette.com', canvas.width - 20, canvas.height - 12);
 
         canvas.toBlob((blob) => {
           const url = URL.createObjectURL(blob);
@@ -334,9 +273,9 @@ ${hexColors
   return (
     <div
       className={`panel-column ${isOpen ? 'open' : ''}`}
-      style={{ flexBasis: isOpen ? '320px' : '0px' }}
+      style={{ flexBasis: isOpen ? `${PANEL_WIDTH}px` : '0px' }}
     >
-      <div className="panel-inner" style={{ width: '320px' }}>
+      <div className="panel-inner" style={{ width: `${PANEL_WIDTH}px` }}>
         <div className="panel-header">
           <div className="panel-title">
             <span>Export Palette</span>
@@ -354,10 +293,7 @@ ${hexColors
           >
             <Settings2 size={16} />
             <span>Export Settings</span>
-            <ChevronDown
-              size={16}
-              className={`chevron ${showSettings ? 'open' : ''}`}
-            />
+            <ChevronDown size={16} className={`chevron ${showSettings ? 'open' : ''}`} />
           </button>
 
           {/* Settings Panel */}
@@ -366,12 +302,10 @@ ${hexColors
               <div className="export-setting">
                 <label>Naming Scheme</label>
                 <div className="export-setting-options">
-                  {Object.keys(namingSchemes).map((scheme) => (
+                  {Object.keys(NAMING_SCHEMES).map((scheme) => (
                     <button
                       key={scheme}
-                      className={`panel-btn ${
-                        namingScheme === scheme ? 'active' : ''
-                      }`}
+                      className={`panel-btn ${namingScheme === scheme ? 'active' : ''}`}
                       onClick={() => setNamingScheme(scheme)}
                     >
                       {scheme.charAt(0).toUpperCase() + scheme.slice(1)}
@@ -387,17 +321,13 @@ ${hexColors
                 <label>CSS Format</label>
                 <div className="export-setting-options">
                   <button
-                    className={`panel-btn ${
-                      cssFormat === 'vars' ? 'active' : ''
-                    }`}
+                    className={`panel-btn ${cssFormat === 'vars' ? 'active' : ''}`}
                     onClick={() => setCssFormat('vars')}
                   >
                     Variables
                   </button>
                   <button
-                    className={`panel-btn ${
-                      cssFormat === 'classes' ? 'active' : ''
-                    }`}
+                    className={`panel-btn ${cssFormat === 'classes' ? 'active' : ''}`}
                     onClick={() => setCssFormat('classes')}
                   >
                     Classes
@@ -409,17 +339,13 @@ ${hexColors
                 <label>Tailwind Format</label>
                 <div className="export-setting-options">
                   <button
-                    className={`panel-btn ${
-                      tailwindFormat === 'extend' ? 'active' : ''
-                    }`}
+                    className={`panel-btn ${tailwindFormat === 'extend' ? 'active' : ''}`}
                     onClick={() => setTailwindFormat('extend')}
                   >
                     Config Extend
                   </button>
                   <button
-                    className={`panel-btn ${
-                      tailwindFormat === 'layer' ? 'active' : ''
-                    }`}
+                    className={`panel-btn ${tailwindFormat === 'layer' ? 'active' : ''}`}
                     onClick={() => setTailwindFormat('layer')}
                   >
                     @layer + Vars
@@ -450,9 +376,7 @@ ${hexColors
                   <span className="panel-export-btn-label">
                     {isCopied ? 'Done!' : option.label}
                   </span>
-                  <span className="panel-export-btn-desc">
-                    {option.description}
-                  </span>
+                  <span className="panel-export-btn-desc">{option.description}</span>
                 </button>
               );
             })}

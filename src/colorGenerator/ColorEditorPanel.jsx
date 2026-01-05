@@ -3,6 +3,16 @@ import { X, Sun, Moon, Flame, Snowflake, Pipette } from 'lucide-react';
 import { hexToHsl, hslToHex } from '../utils/colorUtils';
 import './ColorEditorPanel.css';
 
+const PANEL_WIDTH = 280;
+
+const ADJUSTMENTS = [
+  { icon: Sun, label: 'Lighter', adjust: (hsl) => ({ ...hsl, l: hsl.l + 10 }) },
+  { icon: Moon, label: 'Darker', adjust: (hsl) => ({ ...hsl, l: hsl.l - 10 }) },
+  { icon: Flame, label: 'Warmer', adjust: (hsl) => ({ ...hsl, h: hsl.h - 15 }) },
+  { icon: Snowflake, label: 'Cooler', adjust: (hsl) => ({ ...hsl, h: hsl.h + 15 }) },
+  { icon: Pipette, label: 'Saturate', adjust: (hsl) => ({ ...hsl, s: hsl.s + 15 }) },
+];
+
 function ColorEditorPanel({ isOpen, onClose, color, onColorChange }) {
   const [hsl, setHsl] = useState({ h: 0, s: 50, l: 50 });
   const [hexInput, setHexInput] = useState('');
@@ -37,35 +47,13 @@ function ColorEditorPanel({ isOpen, onClose, color, onColorChange }) {
     }
   };
 
-  const adjustments = [
-    {
-      icon: Sun,
-      label: 'Lighter',
-      action: () => updateColor({ ...hsl, l: hsl.l + 10 }),
-    },
-    {
-      icon: Moon,
-      label: 'Darker',
-      action: () => updateColor({ ...hsl, l: hsl.l - 10 }),
-    },
-    {
-      icon: Flame,
-      label: 'Warmer',
-      action: () => updateColor({ ...hsl, h: hsl.h - 15 }),
-    },
-    {
-      icon: Snowflake,
-      label: 'Cooler',
-      action: () => updateColor({ ...hsl, h: hsl.h + 15 }),
-    },
-    {
-      icon: Pipette,
-      label: 'Saturate',
-      action: () => updateColor({ ...hsl, s: hsl.s + 15 }),
-    },
-  ];
+  const handleSliderChange = (key) => (e) => {
+    updateColor({ ...hsl, [key]: Number(e.target.value) });
+  };
 
   if (!color) return null;
+
+  const textColor = hsl.l > 60 ? '#000' : '#fff';
 
   return (
     <div className={`editor-column ${isOpen ? 'open' : ''}`}>
@@ -83,10 +71,7 @@ function ColorEditorPanel({ isOpen, onClose, color, onColorChange }) {
             className="editor-preview"
             style={{ backgroundColor: color.hex }}
           >
-            <span
-              className="editor-preview-hex"
-              style={{ color: hsl.l > 60 ? '#000' : '#fff' }}
-            >
+            <span className="editor-preview-hex" style={{ color: textColor }}>
               {color.hex}
             </span>
           </div>
@@ -106,7 +91,7 @@ function ColorEditorPanel({ isOpen, onClose, color, onColorChange }) {
             </div>
           </div>
 
-          {/* HSL Sliders */}
+          {/* Hue Slider */}
           <div className="editor-field">
             <label>
               Hue <span>{Math.round(hsl.h)}°</span>
@@ -116,13 +101,12 @@ function ColorEditorPanel({ isOpen, onClose, color, onColorChange }) {
               min="0"
               max="360"
               value={hsl.h}
-              onChange={(e) =>
-                updateColor({ ...hsl, h: Number(e.target.value) })
-              }
+              onChange={handleSliderChange('h')}
               className="slider slider-hue"
             />
           </div>
 
+          {/* Saturation Slider */}
           <div className="editor-field">
             <label>
               Saturation <span>{Math.round(hsl.s)}%</span>
@@ -132,16 +116,13 @@ function ColorEditorPanel({ isOpen, onClose, color, onColorChange }) {
               min="0"
               max="100"
               value={hsl.s}
-              onChange={(e) =>
-                updateColor({ ...hsl, s: Number(e.target.value) })
-              }
+              onChange={handleSliderChange('s')}
               className="slider slider-saturation"
-              style={{
-                '--sat-color': hslToHex(hsl.h, 100, 50),
-              }}
+              style={{ '--sat-color': hslToHex(hsl.h, 100, 50) }}
             />
           </div>
 
+          {/* Lightness Slider */}
           <div className="editor-field">
             <label>
               Lightness <span>{Math.round(hsl.l)}%</span>
@@ -151,13 +132,9 @@ function ColorEditorPanel({ isOpen, onClose, color, onColorChange }) {
               min="0"
               max="100"
               value={hsl.l}
-              onChange={(e) =>
-                updateColor({ ...hsl, l: Number(e.target.value) })
-              }
+              onChange={handleSliderChange('l')}
               className="slider slider-lightness"
-              style={{
-                '--light-mid': hslToHex(hsl.h, hsl.s, 50),
-              }}
+              style={{ '--light-mid': hslToHex(hsl.h, hsl.s, 50) }}
             />
           </div>
 
@@ -165,11 +142,11 @@ function ColorEditorPanel({ isOpen, onClose, color, onColorChange }) {
           <div className="editor-adjustments">
             <label>Quick Adjust</label>
             <div className="adjustment-buttons">
-              {adjustments.map((adj) => (
+              {ADJUSTMENTS.map((adj) => (
                 <button
                   key={adj.label}
                   className="adjustment-btn"
-                  onClick={adj.action}
+                  onClick={() => updateColor(adj.adjust(hsl))}
                   title={adj.label}
                 >
                   <adj.icon size={16} />

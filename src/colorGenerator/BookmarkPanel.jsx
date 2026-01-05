@@ -1,11 +1,16 @@
-import { X, Bookmark, Star, ExternalLink, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
+import { X, Bookmark, Star, Copy, Check } from 'lucide-react';
 import '../styles/PanelStyles.css';
 import './BookmarkPanel.css';
 
+const PANEL_WIDTH = 280;
+
 function BookmarkPanel({ isOpen, onClose, currentUrl }) {
   const [copied, setCopied] = useState(false);
-  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+  const isMac =
+    typeof navigator !== 'undefined' &&
+    navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
   const handleCopyUrl = async () => {
     try {
@@ -18,11 +23,11 @@ function BookmarkPanel({ isOpen, onClose, currentUrl }) {
   };
 
   return (
-    <div 
-      className={`panel-column ${isOpen ? 'open' : ''}`} 
-      style={{ flexBasis: isOpen ? '280px' : '0px' }}
+    <div
+      className={`panel-column ${isOpen ? 'open' : ''}`}
+      style={{ flexBasis: isOpen ? `${PANEL_WIDTH}px` : '0px' }}
     >
-      <div className="panel-inner" style={{ width: '280px' }}>
+      <div className="panel-inner" style={{ width: `${PANEL_WIDTH}px` }}>
         <div className="panel-header">
           <div className="panel-title">
             <Bookmark size={18} />
@@ -34,16 +39,19 @@ function BookmarkPanel({ isOpen, onClose, currentUrl }) {
         </div>
 
         <div className="panel-scroll">
-          {/* Main instruction */}
+          {/* Main Instruction */}
           <div className="bookmark-main">
             <div className="bookmark-icon-large">
               <Star size={32} />
             </div>
             <h3>Save this palette</h3>
-            <p>Bookmark this page to quickly access your current color palette anytime.</p>
+            <p>
+              Bookmark this page to quickly access your current color palette
+              anytime.
+            </p>
           </div>
 
-          {/* Keyboard shortcut */}
+          {/* Keyboard Shortcut */}
           <div className="panel-section">
             <label className="panel-label">Keyboard Shortcut</label>
             <div className="bookmark-shortcut-box">
@@ -56,12 +64,12 @@ function BookmarkPanel({ isOpen, onClose, currentUrl }) {
             </div>
           </div>
 
-          {/* Current URL preview */}
+          {/* Current URL Preview */}
           <div className="panel-section">
             <label className="panel-label">Current Palette URL</label>
             <div className="bookmark-url-box">
               <code className="bookmark-url">{currentUrl}</code>
-              <button 
+              <button
                 className={`bookmark-copy-btn ${copied ? 'copied' : ''}`}
                 onClick={handleCopyUrl}
                 title="Copy URL"
@@ -74,7 +82,7 @@ function BookmarkPanel({ isOpen, onClose, currentUrl }) {
             </p>
           </div>
 
-          {/* Browser instructions */}
+          {/* Browser Instructions */}
           <div className="panel-section">
             <label className="panel-label">Or manually</label>
             <div className="panel-list">
@@ -93,9 +101,10 @@ function BookmarkPanel({ isOpen, onClose, currentUrl }) {
             </div>
           </div>
 
-          {/* Pro tip */}
+          {/* Pro Tip */}
           <div className="bookmark-tip">
-            <strong>Pro tip:</strong> Generate a palette you love, then bookmark it. Each palette has a unique URL!
+            <strong>Pro tip:</strong> Generate a palette you love, then bookmark
+            it. Each palette has a unique URL!
           </div>
         </div>
       </div>

@@ -1,6 +1,15 @@
 import { X, Eye, Check, AlertTriangle } from 'lucide-react';
-import { hexToHsl, getContrastColor } from '../utils/colorUtils';
 import '../styles/PanelStyles.css';
+
+const PANEL_WIDTH = 280;
+
+const COLOR_BLIND_MODES = [
+  { id: 'normal', label: 'Normal Vision' },
+  { id: 'protanopia', label: 'Protanopia (Red-Blind)' },
+  { id: 'deuteranopia', label: 'Deuteranopia (Green-Blind)' },
+  { id: 'tritanopia', label: 'Tritanopia (Blue-Blind)' },
+  { id: 'achromatopsia', label: 'Achromatopsia (Monochrome)' },
+];
 
 const getLuminance = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -28,14 +37,6 @@ const getWCAGRating = (ratio) => {
   return { level: 'Fail', pass: false };
 };
 
-const colorBlindModes = [
-  { id: 'normal', label: 'Normal Vision' },
-  { id: 'protanopia', label: 'Protanopia (Red-Blind)' },
-  { id: 'deuteranopia', label: 'Deuteranopia (Green-Blind)' },
-  { id: 'tritanopia', label: 'Tritanopia (Blue-Blind)' },
-  { id: 'achromatopsia', label: 'Achromatopsia (Monochrome)' },
-];
-
 function AccessibilityPanel({
   isOpen,
   onClose,
@@ -46,9 +47,9 @@ function AccessibilityPanel({
   return (
     <div
       className={`panel-column ${isOpen ? 'open' : ''}`}
-      style={{ flexBasis: isOpen ? '280px' : '0px' }}
+      style={{ flexBasis: isOpen ? `${PANEL_WIDTH}px` : '0px' }}
     >
-      <div className="panel-inner" style={{ width: '280px' }}>
+      <div className="panel-inner" style={{ width: `${PANEL_WIDTH}px` }}>
         <div className="panel-header">
           <div className="panel-title">
             <Eye size={18} />
@@ -60,37 +61,34 @@ function AccessibilityPanel({
         </div>
 
         <div className="panel-scroll">
+          {/* Color Vision Simulation */}
           <div className="panel-section">
             <label className="panel-label">Color Vision Simulation</label>
             <div className="panel-list">
-              {colorBlindModes.map((mode) => (
+              {COLOR_BLIND_MODES.map((mode) => (
                 <button
                   key={mode.id}
-                  className={`panel-list-item ${
-                    colorBlindMode === mode.id ? 'selected' : ''
-                  }`}
+                  className={`panel-list-item ${colorBlindMode === mode.id ? 'selected' : ''}`}
                   onClick={(e) => {
                     onColorBlindModeChange(mode.id);
                     e.currentTarget.blur();
                   }}
                 >
                   <span className="panel-list-item-title">{mode.label}</span>
-                  {colorBlindMode === mode.id && (
-                    <div className="panel-check" />
-                  )}
+                  {colorBlindMode === mode.id && <div className="panel-check" />}
                 </button>
               ))}
             </div>
           </div>
 
+          {/* Text Contrast */}
           <div className="panel-section">
             <label className="panel-label">Text Contrast (on each color)</label>
             <div className="panel-list">
               {colors.map((color) => {
                 const whiteRatio = getContrastRatio(color.hex, '#FFFFFF');
                 const blackRatio = getContrastRatio(color.hex, '#000000');
-                const bestColor =
-                  whiteRatio > blackRatio ? '#FFFFFF' : '#000000';
+                const bestColor = whiteRatio > blackRatio ? '#FFFFFF' : '#000000';
                 const bestRatio = Math.max(whiteRatio, blackRatio);
                 const rating = getWCAGRating(bestRatio);
 
@@ -108,14 +106,8 @@ function AccessibilityPanel({
                         {bestRatio.toFixed(1)}:1
                       </span>
                     </div>
-                    <div
-                      className={`panel-badge ${rating.pass ? 'pass' : 'fail'}`}
-                    >
-                      {rating.pass ? (
-                        <Check size={12} />
-                      ) : (
-                        <AlertTriangle size={12} />
-                      )}
+                    <div className={`panel-badge ${rating.pass ? 'pass' : 'fail'}`}>
+                      {rating.pass ? <Check size={12} /> : <AlertTriangle size={12} />}
                       {rating.level}
                     </div>
                   </div>
@@ -124,6 +116,7 @@ function AccessibilityPanel({
             </div>
           </div>
 
+          {/* Adjacent Color Contrast */}
           <div className="panel-section">
             <label className="panel-label">Adjacent Color Contrast</label>
             <div className="panel-list">

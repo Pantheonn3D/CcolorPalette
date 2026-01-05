@@ -1,738 +1,67 @@
-/* ColorGenerator.css */
-
-.generator-container {
-  display: flex;
-  width: 100%;
-  background: inherit;
-  overflow: hidden;
-
-  /* Viewport height, with an iOS-safe fallback */
-  height: 100vh;
-  height: 100dvh;
-  height: calc(var(--vh, 1vh) * 100);
-
-  /* Flex sizing sanity for Safari */
-  align-items: stretch;
-  min-height: 0;
-}
-
-.color-column {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
-
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-
-  padding-bottom: 80px;
-  position: relative;
-  transition: flex 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-  user-select: none;
-
-  /* keep this, but do not rely on parent percentage height alone */
-  height: auto;
-}
-
-/* Dragging states */
-.color-column.dragging {
-  opacity: 0.5;
-  transform: scale(0.98);
-}
-
-.color-column.drag-over {
-  transform: scale(1.02);
-}
-
-.color-column.drag-over::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.1);
-  pointer-events: none;
-}
-
-.colors-area {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-}
-
-.colors-area.stacked {
-  flex-direction: column;
-}
-
-/* Desktop stacking mode, colors only */
-.colors-area.stacked .color-column {
-  width: 100%;
-  min-height: 0;
-  height: auto;
-  flex: 1 1 0;
-
-  flex-direction: row;
-  justify-content: flex-end;
-  align-items: center;
-
-  padding: 0 16px;
-  padding-bottom: 0;
-  position: relative;
-}
-
-.colors-area.stacked .color-toolbar {
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  right: auto;
-  transform: translateY(-50%);
-  flex-direction: row;
-  gap: 4px;
-  pointer-events: auto;
-}
-
-.colors-area.stacked .toolbar-btn {
-  width: 36px;
-  height: 36px;
-  opacity: 0.6;
-  animation: none;
-}
-
-.colors-area.stacked .color-column:hover .toolbar-btn {
-  animation: none;
-  opacity: 0.6;
-}
-
-.colors-area.stacked .color-content {
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.colors-area.stacked .color-hex {
-  font-size: 1.1rem;
-  min-width: auto;
-  padding: 8px 12px;
-  text-align: right;
-}
-
-.colors-area.stacked .lock-indicator {
-  display: none;
-}
-
-/* Add button between stacked rows */
-.colors-area.stacked .addColor {
-  display: flex;
-  width: 100%;
-  height: 0;
-  flex: 0 0 0;
-  margin: 0;
-  position: relative;
-  justify-content: center;
-  align-items: center;
-  z-index: 60;
-  overflow: visible;
-}
-
-.colors-area.stacked .addBtn {
-  position: absolute;
-  width: 48px;
-  height: 48px;
-  opacity: 0.2;
-  transform: scale(1);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-/* ========== SHADE PICKER (General) ========== */
-
-.shade-picker {
-  display: flex;
-  gap: 6px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(6px);
-}
-
-.shade-swatch {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-}
-
-.shade-swatch:focus {
-  outline: 2px solid white;
-}
-
-/* ========== SHADE CONTAINER (Desktop Default) ========== */
-.shade-container {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  z-index: 50;
-  animation: shadeFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  
-  /* Reset padding on container */
-  padding-top: 0; 
-}
-
-/* Apply the padding to the FIRST shade.
-   This makes the first color extend behind the header. */
-.shade-container .shade-step:first-child {
-  padding-top: 100px; 
-}
-
-/* If the app switches to stacked mode on desktop due to narrow width */
-.colors-area.stacked .shade-container {
-  flex-direction: row;
-  padding-top: 0;
-}
-
-/* Reset the padding for horizontal layout */
-.colors-area.stacked .shade-step:first-child {
-  padding-top: 0;
-}
-
-.colors-area.stacked .shade-step {
-  height: 100%;
-  width: auto;
-}
-
-.shade-step {
-  flex: 1;
-  width: 100%;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.1s ease, z-index 0.1s ease;
-  position: relative;
-}
-
-/* Hover effect for desktop: scale slightly to show selection */
-@media (hover: hover) {
-  .shade-step:hover {
-    transform: scaleX(1.1) scaleY(1.1);
-    z-index: 10;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    border-radius: 4px;
-  }
-}
-
-/* Highlight the current active color */
-.shade-step.is-current {
-  z-index: 5;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
-}
-
-/* Close Button - Hidden on Desktop by default */
-.shade-close-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  color: #161616;
-  border: none;
-  
-  display: none; /* Hidden on Desktop */
-  align-items: center;
-  justify-content: center;
-  
-  cursor: pointer;
-  z-index: 20;
-  transform: translateY(-10px);
-}
-
-@keyframes shadeFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes shadeBtnIn {
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ========== REMOVE COLOR BUTTON (Matches Shade Close Style) ========== */
-.column-remove-btn {
-  position: absolute;
-  /* Desktop: Below the floating header */
-  top: 100px; 
-  right: 10px;
-  
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(4px);
-  border: none;
-  
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  cursor: pointer;
-  z-index: 20;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.color-column:hover .column-remove-btn {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.column-remove-btn:hover {
-  background: rgba(0, 0, 0, 0.3);
-  transform: scale(1.1);
-}
-
-.column-remove-btn:active {
-  transform: scale(0.9);
-}
-
-/* Stacked mode adjustment for remove button */
-.colors-area.stacked .column-remove-btn {
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-  opacity: 0.6;
-}
-
-.colors-area.stacked .color-column:hover .column-remove-btn {
-  opacity: 1;
-  transform: translateY(-50%) scale(1);
-}
-
-
-/* ========== COLOR TOOLBAR ========== */
-.color-toolbar {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  pointer-events: none;
-}
-
-.color-column:hover .color-toolbar {
-  pointer-events: auto;
-}
-
-/* Buttons start invisible */
-.toolbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  background: none;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  opacity: 0; /* Hidden by default */
-  transition: background-color 0.15s ease,
-    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Staggered entrance */
-.color-column:hover .toolbar-btn {
-  animation: toolbarBtnPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.color-column .toolbar-btn:nth-child(1) { opacity: 0; 
-
-}
-
-.color-column:hover .toolbar-btn:nth-child(1) { animation-delay: 0ms; }
-.color-column:hover .toolbar-btn:nth-child(2) { animation-delay: 40ms; }
-.color-column:hover .toolbar-btn:nth-child(3) { animation-delay: 80ms; }
-.color-column:hover .toolbar-btn:nth-child(4) { animation-delay: 120ms; }
-.color-column:hover .toolbar-btn:nth-child(5) { animation-delay: 160ms; }
-
-@keyframes toolbarBtnPop {
-  0% { opacity: 0; transform: scale(0.5) translateY(10px); }
-  100% { opacity: 0.6; transform: scale(1) translateY(0); }
-}
-
-.toolbar-btn:hover {
-  opacity: 1 !important;
-  background: rgba(255, 255, 255, 0.15);
-  transform: scale(1.15);
-}
-
-.toolbar-btn:active {
-  transform: scale(0.9);
-  transition: transform 0.1s ease;
-}
-
-.toolbar-btn.active {
-  opacity: 1;
-}
-
-.drag-handle {
-  cursor: grab;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
-/* ========== LOCK INDICATOR ========== */
-.lock-indicator {
-  position: absolute;
-  bottom: 120px;
-  opacity: 0.5;
-  animation: lockPulse 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes lockPulse {
-  0% { transform: scale(0); opacity: 0; }
-  50% { transform: scale(1.3); }
-  100% { transform: scale(1); opacity: 0.5; }
-}
-
-/* ========== HEX CODE ========== */
-.color-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.color-hex {
-  font-size: var(--font-xl);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: background-color 0.2s ease,
-    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  min-width: 120px;
-  text-align: center;
-}
-
-.color-hex:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  transform: scale(1.08);
-}
-
-.color-hex:active {
-  transform: scale(0.95);
-}
-
-.color-hex.copied {
-  animation: copyBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes copyBounce {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); }
-}
-
-/* ========== ADD COLOR BUTTON ========== */
-.addColor {
-  width: 80px;
-  margin-left: -40px;
-  margin-right: -40px;
-  z-index: 60;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.addBtn {
-  transform: scale(0.6);
-  opacity: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
-  background: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 0.2s ease, box-shadow 0.2s ease;
-}
-
-@media (hover: hover) {
-  .addColor:hover .addBtn {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  .addBtn:hover {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    transform: scale(1.1) !important;
-  }
-}
-
-.addBtn:active {
-  transform: scale(0.9) !important;
-  transition: transform 0.1s ease;
-}
-
-/* ========== ENTERING ANIMATION ========== */
-.color-column.color-entering {
-  animation: columnExpand 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes columnExpand {
-  0% { flex: 0.0001; }
-  100% { flex: 1; }
-}
-
-.color-column.color-entering .color-content {
-  animation: contentReveal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
-  opacity: 0;
-}
-
-@keyframes contentReveal {
-  0% { opacity: 0; transform: translateY(30px) scale(0.9); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.color-column.color-entering .color-hex {
-  animation: hexPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s forwards;
-  opacity: 0;
-}
-
-@keyframes hexPop {
-  0% { opacity: 0; transform: scale(0.5); }
-  70% { transform: scale(1.1); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-/* ========== REMOVING ANIMATION ========== */
-.color-column.color-removing {
-  animation: columnCollapse 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes columnCollapse {
-  0% { flex: 1; opacity: 1; }
-  100% { flex: 0.0001; opacity: 0; }
-}
-
-/* ========== REORDER ANIMATION ========== */
-.color-column.reordering {
-  animation: reorderBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes reorderBounce {
-  0% { transform: scale(0.95); }
-  50% { transform: scale(1.02); }
-  100% { transform: scale(1); }
-}
-
-/* ========== MOBILE HEADER (hidden on desktop) ========== */
-.mobile-header {
-  display: none;
-}
-
-/* ================================================================= */
-/* PC STACKED VIEW FIXES                                             */
-/* ================================================================= */
-
-@media (min-width: 769px) {
-  /* 
-     1. Push the first color down so the background covers the area behind the header,
-        but the content (Hex code) starts lower down.
-  */
-  .colors-area.stacked .color-column:first-child {
-    padding-top: 100px;
-  }
- 
-  /* 
-     2. The absolute positioned elements (Toolbar & Remove Button) are based on 
-        the total height (50%), so they ignore the padding. 
-        
-        We need to push them down by 50px (half the padding) to realign them 
-        visually with the Hex code (which Flexbox centers in the remaining space).
-        
-        Calculation: Center of visible area = 50% + 50px
-  */
-  .colors-area.stacked .color-column:first-child .color-toolbar {
-    top: calc(50% + 50px);
-  }
-  
-  .colors-area.stacked .color-column:first-child .column-remove-btn {
-    top: calc(50% + 50px);
-  }
-}
-
-.seo-content-footer {
-  color: rgba(255, 255, 255, 0.02);
-}
-
-.seo-content-wrapper {
-  color: rgba(255, 255, 255, 0.02);
-}
-
-.seo-main-title {
-  color: rgba(255, 255, 255, 0.02);
-}
-
-.seo-trait-separator {
-  color: rgba(255, 255, 255, 0.02);
-}
-
-.seo-color-reference {
-  color: rgba(255, 255, 255, 0.02);
-}
-
-.seo-section-title {
-  color: rgba(255, 255, 255, 0.02);
-}
-
-
-
-
-.seo-footer-tiny {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 8px;
-  color: rgba(0, 0, 0, 0.2); /* Very faint */
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 5; /* Below the UI controls */
-  max-width: 90%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  color: rgba(0, 0, 0, 0.2); /* Very faint */
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-  
-  /* Ensures it can't be clicked */
-  pointer-events: none; 
-}
-
-/* ========== MOBILE RESPONSIVE ========== */
-@media (max-width: 768px) {
-  .generator-container {
-    flex-direction: column;
+/* ============================================
+   COLOR GENERATOR MAIN
+   ============================================ */
+
+   .generator-container {
+    display: flex;
+    width: 100%;
+    background: inherit;
     overflow: hidden;
     height: 100vh;
     height: 100dvh;
-    height: -webkit-fill-available;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(var(--vh, 1vh) * 100);
+    align-items: stretch;
+    min-height: 0;
   }
-
-  /* Mobile Header */
-  .mobile-header {
+  
+  /* === COLORS AREA === */
+  .colors-area {
     display: flex;
-    width: 100%;
-    flex: 0 0 56px;
-    background: white;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 4px;
-    padding-top: env(safe-area-inset-top, 0px);
-    gap: 4px;
-    z-index: 10;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
   }
-
-  .mobile-logo {
-    display: flex;
-    align-items: center;
-    background: none;
-    border: none;
-    padding: 8px;
-    margin: -8px;
-    border-radius: 8px;
-    cursor: pointer;
+  
+  .colors-area.stacked {
+    flex-direction: column;
   }
-
-  .mobile-logo:active { background: rgba(0, 0, 0, 0.05); }
-
-  .mobile-logo-mark { display: flex; gap: 2px; }
-
-  .mobile-logo-swatch {
-    width: 5px;
-    height: 16px;
-    border-radius: 2px;
-    transition: background-color 0.3s ease;
-  }
-
-  .mobile-hint {
-    font-size: 12px;
-    color: #999;
-    white-space: nowrap;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px 2px;
-    padding-left: 12px;
-    border-radius: 6px;
-    transition: background-color 0.15s ease;
-  }
-
-  .mobile-hint:active { background: rgba(0, 0, 0, 0.05); }
-
-  .mobile-actions {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    flex-shrink: 0;
-  }
-
-  .mobile-icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: none;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    color: #444;
-    transition: background-color 0.15s ease, color 0.15s ease;
-  }
-
-  .mobile-icon-btn:active:not(.disabled) {
-    background: #f0f0f0;
-    color: #161616;
-  }
-
-  .mobile-icon-btn.disabled { opacity: 0.3; pointer-events: none; }
-  .mobile-icon-btn.active { background: #f0f0f0; color: #161616; }
-
-  .mobile-separator {
-    width: 1px;
-    height: 20px;
-    background: rgba(0, 0, 0, 0.1);
-    margin: 0 4px;
-  }
-
-  /* Color rows */
+  
+  /* === COLOR COLUMN === */
   .color-column {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding-bottom: var(--space-20);
+    position: relative;
+    transition: flex var(--transition-spring);
+    user-select: none;
+    height: auto;
+  }
+  
+  .color-column.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+  }
+  
+  .color-column.drag-over {
+    transform: scale(1.02);
+  }
+  
+  .color-column.drag-over::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.1);
+    pointer-events: none;
+  }
+  
+  /* === STACKED MODE (Desktop) === */
+  .colors-area.stacked .color-column {
     width: 100%;
     min-height: 0;
     height: auto;
@@ -740,90 +69,52 @@
     flex-direction: row;
     justify-content: flex-end;
     align-items: center;
-    padding: 0 16px;
+    padding: 0 var(--space-4);
     padding-bottom: 0;
     position: relative;
   }
-
-  /* Color entering animation */
-  .color-column.color-entering {
-    animation: mobileColumnExpand 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  }
-
-  @keyframes mobileColumnExpand {
-    0% { flex: 0.0001 1 0; opacity: 0; }
-    100% { flex: 1 1 0; opacity: 1; }
-  }
-
-  .color-column.color-entering .color-content {
-    animation: contentReveal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
-    opacity: 0;
-  }
-
-  .color-column.color-entering .color-hex {
-    animation: hexPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s forwards;
-    opacity: 0;
-  }
-
-  /* Color removing animation */
-  .color-column.color-removing {
-    animation: mobileColumnCollapse 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  }
-
-  @keyframes mobileColumnCollapse {
-    0% { flex: 1 1 0; opacity: 1; }
-    100% { flex: 0.0001 1 0; opacity: 0; }
-  }
-
-  /* Toolbar on left - always visible on mobile */
-  .color-toolbar {
+  
+  .colors-area.stacked .color-toolbar {
     position: absolute;
     top: 50%;
-    left: 12px;
+    left: var(--space-3);
     right: auto;
     transform: translateY(-50%);
     flex-direction: row;
-    gap: 4px;
+    gap: var(--space-1);
     pointer-events: auto;
   }
-
-  .toolbar-btn {
+  
+  .colors-area.stacked .toolbar-btn {
     width: 36px;
     height: 36px;
     opacity: 0.6;
     animation: none;
   }
-
-  .color-column:hover .toolbar-btn {
+  
+  .colors-area.stacked .color-column:hover .toolbar-btn {
     animation: none;
     opacity: 0.6;
   }
-
-  .toolbar-btn:active {
-    opacity: 1;
-    transform: scale(0.9);
-  }
-
-  .toolbar-btn.active { opacity: 1; }
-
-  /* Hex code on the right */
-  .color-content {
+  
+  .colors-area.stacked .color-content {
     flex-direction: row;
     align-items: center;
     justify-content: flex-end;
   }
-
-  .color-hex {
+  
+  .colors-area.stacked .color-hex {
     font-size: 1.1rem;
     min-width: auto;
-    padding: 8px 12px;
+    padding: var(--space-2) var(--space-3);
     text-align: right;
   }
-
-  .lock-indicator { display: none; }
-
-  /* Add button between rows */
-  .addColor {
+  
+  .colors-area.stacked .lock-indicator {
+    display: none;
+  }
+  
+  .colors-area.stacked .addColor {
     display: flex;
     width: 100%;
     height: 0;
@@ -835,101 +126,725 @@
     z-index: 60;
     overflow: visible;
   }
-
-  /* Add button - no hover states on mobile */
-  .addBtn {
+  
+  .colors-area.stacked .addBtn {
     position: absolute;
     width: 48px;
     height: 48px;
-    opacity: 0.1;
+    opacity: 0.2;
     transform: scale(1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .addColor:hover .addBtn { opacity: 0.1; transform: scale(1); }
-  .addBtn:hover { opacity: 0.1; transform: scale(1); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
-
-  .addBtn:active {
-    opacity: 1 !important;
-    transform: scale(0.95) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  .addColor::before {
-    content: '';
-    position: absolute;
-    top: -20px;
-    left: 0;
-    right: 0;
-    bottom: -20px;
-    z-index: -1;
-  }
-
-  /* On mobile, shades flow horizontally */
-  .shade-container {
-    flex-direction: row;
-    padding-top: 0; 
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
   }
   
-  /* Reset first child padding on mobile */
-  .shade-step:first-child {
+  /* === COLOR TOOLBAR === */
+  .color-toolbar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    pointer-events: none;
+  }
+  
+  .color-column:hover .color-toolbar {
+    pointer-events: auto;
+  }
+  
+  .toolbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: none;
+    border: none;
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    opacity: 0;
+    transition: background-color var(--transition-fast),
+                transform var(--transition-bounce);
+  }
+  
+  .color-column:hover .toolbar-btn {
+    animation: toolbarBtnPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  .color-column .toolbar-btn:nth-child(1) { opacity: 0; }
+  .color-column:hover .toolbar-btn:nth-child(1) { animation-delay: 0ms; }
+  .color-column:hover .toolbar-btn:nth-child(2) { animation-delay: 40ms; }
+  .color-column:hover .toolbar-btn:nth-child(3) { animation-delay: 80ms; }
+  .color-column:hover .toolbar-btn:nth-child(4) { animation-delay: 120ms; }
+  .color-column:hover .toolbar-btn:nth-child(5) { animation-delay: 160ms; }
+  
+  @keyframes toolbarBtnPop {
+    0% { opacity: 0; transform: scale(0.5) translateY(10px); }
+    100% { opacity: 0.6; transform: scale(1) translateY(0); }
+  }
+  
+  .toolbar-btn:hover {
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.15);
+  }
+  
+  .toolbar-btn:active {
+    transform: scale(0.9);
+    transition: transform 0.1s ease;
+  }
+  
+  .toolbar-btn.active {
+    opacity: 1;
+  }
+  
+  .drag-handle {
+    cursor: grab;
+  }
+  
+  .drag-handle:active {
+    cursor: grabbing;
+  }
+  
+  /* === LOCK INDICATOR === */
+  .lock-indicator {
+    position: absolute;
+    bottom: 120px;
+    opacity: 0.5;
+    animation: lockPulse 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  @keyframes lockPulse {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); opacity: 0.5; }
+  }
+  
+  /* === COLOR CONTENT === */
+  .color-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  
+  .color-hex {
+    font-size: var(--font-xl);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-lg);
+    transition: background-color var(--transition-base),
+                transform var(--transition-bounce);
+    min-width: 120px;
+    text-align: center;
+  }
+  
+  .color-hex:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: scale(1.08);
+  }
+  
+  .color-hex:active {
+    transform: scale(0.95);
+  }
+  
+  .color-hex.copied {
+    animation: copyBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  @keyframes copyBounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  
+  /* === ADD COLOR BUTTON === */
+  .addColor {
+    width: 80px;
+    margin-left: -40px;
+    margin-right: -40px;
+    z-index: 60;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .addBtn {
+    transform: scale(0.6);
+    opacity: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    border: none;
+    background: var(--color-bg-card);
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity var(--transition-base), 
+                box-shadow var(--transition-base);
+  }
+  
+  @media (hover: hover) {
+    .addColor:hover .addBtn {
+      opacity: 1;
+      transform: scale(1);
+    }
+  
+    .addBtn:hover {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      transform: scale(1.1) !important;
+    }
+  }
+  
+  .addBtn:active {
+    transform: scale(0.9) !important;
+    transition: transform 0.1s ease;
+  }
+  
+  /* === REMOVE COLUMN BUTTON === */
+  .column-remove-btn {
+    position: absolute;
+    top: 100px;
+    right: var(--space-3);
+    width: var(--space-8);
+    height: var(--space-8);
+    border-radius: var(--radius-full);
+    background: rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(4px);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 20;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all var(--transition-bounce);
+  }
+  
+  .color-column:hover .column-remove-btn {
+    opacity: 1;
+    transform: scale(1);
+  }
+  
+  .column-remove-btn:hover {
+    background: rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+  }
+  
+  .column-remove-btn:active {
+    transform: scale(0.9);
+  }
+  
+  .colors-area.stacked .column-remove-btn {
+    top: 50%;
+    right: var(--space-3);
+    transform: translateY(-50%);
+    opacity: 0.6;
+  }
+  
+  .colors-area.stacked .color-column:hover .column-remove-btn {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  
+  /* === SHADE PICKER === */
+  .shade-picker {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(6px);
+  }
+  
+  .shade-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+  }
+  
+  .shade-swatch:focus {
+    outline: 2px solid white;
+  }
+  
+  /* === SHADE CONTAINER === */
+  .shade-container {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+    animation: shadeFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     padding-top: 0;
   }
   
-  .shade-step {
+  .shade-container .shade-step:first-child {
+    padding-top: 100px;
+  }
+  
+  .colors-area.stacked .shade-container {
+    flex-direction: row;
+    padding-top: 0;
+  }
+  
+  .colors-area.stacked .shade-step:first-child {
+    padding-top: 0;
+  }
+  
+  .colors-area.stacked .shade-step {
     height: 100%;
     width: auto;
   }
   
-  .shade-step:active {
-    transform: scale(1.2);
-    z-index: 10;
-    border-radius: 4px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  .shade-step {
+    flex: 1;
+    width: 100%;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s ease, z-index 0.1s ease;
+    position: relative;
   }
   
-  /* FIXED: Mobile "Close Shade" Button */
+  @media (hover: hover) {
+    .shade-step:hover {
+      transform: scaleX(1.1) scaleY(1.1);
+      z-index: 10;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-sm);
+    }
+  }
+  
+  .shade-step.is-current {
+    z-index: 5;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  }
+  
   .shade-close-btn {
-    display: flex;
     position: absolute;
-    top: 10%;
-    left: 8px; /* Standard alignment */
-    right: auto;
-
-    /* VISUAL CONSISTENCY (Square) */
-    border-radius: 10px;
-    width: 48px;
-    height: 48px;
-    align-items: center;
-    justify-content: center;
+    top: var(--space-3);
+    right: var(--space-3);
+    width: var(--space-8);
+    height: var(--space-8);
+    border-radius: var(--radius-full);
     background: rgba(255, 255, 255, 0.05);
-    color: #161616;
+    color: var(--color-text-primary);
     border: none;
-    z-index: 60;
-  }
-  
-  /* FIXED: Mobile "Remove Color" Button (Matches styling of close button) */
-  .column-remove-btn {
-    display: flex;
-    position: absolute;
-    top: 10%;
-    right: 8px; /* Opposite side of close button */
-    opacity: 1; 
-
-    /* VISUAL CONSISTENCY (Square) */
-    border-radius: 10px;
-    width: 48px;
-    height: 48px;
+    display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.05); /* Lighter bg for remove */
-    backdrop-filter: blur(4px);
-    border: none;
-    z-index: 60;
+    cursor: pointer;
+    z-index: 20;
+    transform: translateY(-10px);
   }
   
-  .column-remove-btn:active {
-    background: rgba(0, 0, 0, 0.15);
+  @keyframes shadeFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
-}
+  
+  /* === ANIMATIONS === */
+  .color-column.color-entering {
+    animation: columnExpand var(--transition-spring) forwards;
+  }
+  
+  @keyframes columnExpand {
+    0% { flex: 0.0001; }
+    100% { flex: 1; }
+  }
+  
+  .color-column.color-entering .color-content {
+    animation: contentReveal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
+    opacity: 0;
+  }
+  
+  @keyframes contentReveal {
+    0% { opacity: 0; transform: translateY(30px) scale(0.9); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  
+  .color-column.color-entering .color-hex {
+    animation: hexPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s forwards;
+    opacity: 0;
+  }
+  
+  @keyframes hexPop {
+    0% { opacity: 0; transform: scale(0.5); }
+    70% { transform: scale(1.1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  
+  .color-column.color-removing {
+    animation: columnCollapse 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  
+  @keyframes columnCollapse {
+    0% { flex: 1; opacity: 1; }
+    100% { flex: 0.0001; opacity: 0; }
+  }
+  
+  .color-column.reordering {
+    animation: reorderBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  @keyframes reorderBounce {
+    0% { transform: scale(0.95); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+  
+  /* === PC STACKED VIEW === */
+  @media (min-width: 769px) {
+    .colors-area.stacked .color-column:first-child {
+      padding-top: 100px;
+    }
+  
+    .colors-area.stacked .color-column:first-child .color-toolbar {
+      top: calc(50% + 50px);
+    }
+  
+    .colors-area.stacked .color-column:first-child .column-remove-btn {
+      top: calc(50% + 50px);
+    }
+  }
+  
+  /* === MOBILE HEADER === */
+  .mobile-header {
+    display: none;
+  }
+  
+  /* === SEO CONTENT (Hidden) === */
+  .seo-content-footer,
+  .seo-content-wrapper,
+  .seo-main-title,
+  .seo-trait-separator,
+  .seo-color-reference,
+  .seo-section-title {
+    color: rgba(255, 255, 255, 0.02);
+  }
+  
+  .seo-footer-tiny {
+    position: absolute;
+    bottom: var(--space-2);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    color: rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 5;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+  }
+  
+  /* ============================================
+     MOBILE RESPONSIVE
+     ============================================ */
+  @media (max-width: 768px) {
+    .generator-container {
+      flex-direction: column;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      height: -webkit-fill-available;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+  
+    /* === MOBILE HEADER === */
+    .mobile-header {
+      display: flex;
+      width: 100%;
+      flex: 0 0 56px;
+      background: var(--color-bg-card);
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-1);
+      padding-top: env(safe-area-inset-top, 0px);
+      gap: var(--space-1);
+      z-index: 10;
+    }
+  
+    .mobile-logo {
+      display: flex;
+      align-items: center;
+      background: none;
+      border: none;
+      padding: var(--space-2);
+      margin: calc(var(--space-2) * -1);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+    }
+  
+    .mobile-logo:active {
+      background: rgba(0, 0, 0, 0.05);
+    }
+  
+    .mobile-logo-mark {
+      display: flex;
+      gap: 2px;
+    }
+  
+    .mobile-logo-swatch {
+      width: 5px;
+      height: 16px;
+      border-radius: 2px;
+      transition: background-color 0.3s ease;
+    }
+  
+    .mobile-hint {
+      font-size: 12px;
+      color: var(--color-text-faint);
+      white-space: nowrap;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: var(--space-2) 2px;
+      padding-left: var(--space-3);
+      border-radius: var(--radius-md);
+      transition: background-color var(--transition-fast);
+    }
+  
+    .mobile-hint:active {
+      background: rgba(0, 0, 0, 0.05);
+    }
+  
+    .mobile-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+  
+    .mobile-icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--space-8);
+      height: var(--space-8);
+      background: none;
+      border: none;
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      color: #444;
+      transition: background-color var(--transition-fast), color var(--transition-fast);
+    }
+  
+    .mobile-icon-btn:active:not(.disabled) {
+      background: var(--color-bg-hover);
+      color: var(--color-text-primary);
+    }
+  
+    .mobile-icon-btn.disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+  
+    .mobile-icon-btn.active {
+      background: var(--color-bg-hover);
+      color: var(--color-text-primary);
+    }
+  
+    .mobile-separator {
+      width: 1px;
+      height: 20px;
+      background: var(--color-border);
+      margin: 0 var(--space-1);
+    }
+  
+    /* === COLOR ROWS === */
+    .color-column {
+      width: 100%;
+      min-height: 0;
+      height: auto;
+      flex: 1 1 0;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 0 var(--space-4);
+      padding-bottom: 0;
+      position: relative;
+    }
+  
+    .color-column.color-entering {
+      animation: mobileColumnExpand var(--transition-spring) forwards;
+    }
+  
+    @keyframes mobileColumnExpand {
+      0% { flex: 0.0001 1 0; opacity: 0; }
+      100% { flex: 1 1 0; opacity: 1; }
+    }
+  
+    .color-column.color-removing {
+      animation: mobileColumnCollapse 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+  
+    @keyframes mobileColumnCollapse {
+      0% { flex: 1 1 0; opacity: 1; }
+      100% { flex: 0.0001 1 0; opacity: 0; }
+    }
+  
+    /* === TOOLBAR ON LEFT === */
+    .color-toolbar {
+      position: absolute;
+      top: 50%;
+      left: var(--space-3);
+      right: auto;
+      transform: translateY(-50%);
+      flex-direction: row;
+      gap: var(--space-1);
+      pointer-events: auto;
+    }
+  
+    .toolbar-btn {
+      width: 36px;
+      height: 36px;
+      opacity: 0.6;
+      animation: none;
+    }
+  
+    .color-column:hover .toolbar-btn {
+      animation: none;
+      opacity: 0.6;
+    }
+  
+    .toolbar-btn:active {
+      opacity: 1;
+      transform: scale(0.9);
+    }
+  
+    .toolbar-btn.active {
+      opacity: 1;
+    }
+  
+    /* === HEX ON RIGHT === */
+    .color-content {
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-end;
+    }
+  
+    .color-hex {
+      font-size: 1.1rem;
+      min-width: auto;
+      padding: var(--space-2) var(--space-3);
+      text-align: right;
+    }
+  
+    .lock-indicator {
+      display: none;
+    }
+  
+    /* === ADD BUTTON === */
+    .addColor {
+      display: flex;
+      width: 100%;
+      height: 0;
+      flex: 0 0 0;
+      margin: 0;
+      position: relative;
+      justify-content: center;
+      align-items: center;
+      z-index: 60;
+      overflow: visible;
+    }
+  
+    .addBtn {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      opacity: 0.1;
+      transform: scale(1);
+      box-shadow: var(--shadow-md);
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    }
+  
+    .addColor:hover .addBtn {
+      opacity: 0.1;
+      transform: scale(1);
+    }
+  
+    .addBtn:hover {
+      opacity: 0.1;
+      transform: scale(1);
+      box-shadow: var(--shadow-md);
+    }
+  
+    .addBtn:active {
+      opacity: 1 !important;
+      transform: scale(0.95) !important;
+      box-shadow: var(--shadow-lg);
+    }
+  
+    .addColor::before {
+      content: '';
+      position: absolute;
+      top: -20px;
+      left: 0;
+      right: 0;
+      bottom: -20px;
+      z-index: -1;
+    }
+  
+    /* === SHADES ON MOBILE === */
+    .shade-container {
+      flex-direction: row;
+      padding-top: 0;
+    }
+  
+    .shade-step:first-child {
+      padding-top: 0;
+    }
+  
+    .shade-step {
+      height: 100%;
+      width: auto;
+    }
+  
+    .shade-step:active {
+      transform: scale(1.2);
+      z-index: 10;
+      border-radius: var(--radius-sm);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    }
+  
+    .shade-close-btn {
+      display: flex;
+      position: absolute;
+      top: 10%;
+      left: var(--space-2);
+      right: auto;
+      border-radius: var(--radius-xl);
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.05);
+      z-index: 60;
+    }
+  
+    .column-remove-btn {
+      display: flex;
+      position: absolute;
+      top: 10%;
+      right: var(--space-2);
+      opacity: 1;
+      border-radius: var(--radius-xl);
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.05);
+      z-index: 60;
+    }
+  
+    .column-remove-btn:active {
+      background: rgba(0, 0, 0, 0.15);
+    }
+  }

@@ -1,78 +1,68 @@
 import { Link } from 'react-router-dom';
-import { 
-  Undo2, Redo2, Clock, Upload, Sparkles, Eye, Bookmark, 
-  Share 
+import {
+  Undo2,
+  Redo2,
+  Clock,
+  Upload,
+  Sparkles,
+  Eye,
+  Bookmark,
 } from 'lucide-react';
 import './Header.css';
 
+const DEFAULT_LOGO_COLORS = [
+  { hex: '#0B2B29' },
+  { hex: '#21A479' },
+  { hex: '#95D2A6' },
+];
+
 function Header({
   isLanding = false,
-  canUndo,
-  canRedo,
+  canUndo = false,
+  canRedo = false,
   onUndo,
   onRedo,
   onToggleMethod,
-  isMethodOpen,
+  isMethodOpen = false,
   onToggleA11y,
-  isA11yOpen,
+  isA11yOpen = false,
   onToggleHistory,
-  isHistoryOpen,
+  isHistoryOpen = false,
   onToggleExport,
-  isExportOpen,
+  isExportOpen = false,
   onToggleBookmark,
-  isBookmarkOpen,
+  isBookmarkOpen = false,
   logoColors = [],
 }) {
-  
-  // Static logo colors for landing page
-  const displayLogoColors = isLanding 
-    ? [{hex: '#0B2B29'}, {hex: '#21A479'}, {hex: '#95D2A6'}] 
-    : logoColors;
+  const displayLogoColors = isLanding ? DEFAULT_LOGO_COLORS : logoColors;
 
   return (
     <header className={`header ${isLanding ? 'landing-mode' : ''}`}>
       <div className="leftSection">
-        <Link 
-          to="/home" 
-          className="logoContainer" 
-          title="Go to Home"
-          style={{ textDecoration: 'none' }}
-        >
+        <Link to="/home" className="logoContainer" title="Go to Home">
           <div className="logoMark">
             {displayLogoColors.slice(0, 3).map((color, i) => (
-              <span 
+              <span
                 key={i}
-                className="logoSwatch" 
-                style={{ backgroundColor: color.hex }} 
+                className="logoSwatch"
+                style={{ backgroundColor: color.hex }}
               />
             ))}
           </div>
           <span className="logoText">CColorPalette</span>
         </Link>
-        {!isLanding && <span className="hint">Press spacebar to generate</span>}
+
+        {!isLanding && (
+          <span className="hint">Press spacebar to generate</span>
+        )}
       </div>
 
       <div className="rightSection">
         {isLanding ? (
-          /* LANDING PAGE NAVIGATION 
-          (add these later): 
-            <a href="#start" className="nav-link">Get started</a>
-            <a href="#faq" className="nav-link">FAQ</a>
-            <a href="#about" className="nav-link">About</a>
-                        
-            <div className="landing-icons">
-              <button className="iconBtn" title="Share">
-                <Share size={20} />
-              </button>
-              <button className="iconBtn" title="Saved">
-                <Bookmark size={20} />
-              </button>
-            </div>
-            */
-          <div className="landing-nav">
-          </div>
+          <nav className="landing-nav">
+            {/* Future navigation links */}
+          </nav>
         ) : (
-          /* GENERATOR TOOLS */
           <>
             <button
               className={`iconBtn ${!canUndo ? 'disabled' : ''}`}
@@ -94,7 +84,7 @@ function Header({
 
             <div className="separator" />
 
-            <button 
+            <button
               className={`iconBtn ${isMethodOpen ? 'active' : ''}`}
               onClick={onToggleMethod}
               title="Generation Method"
@@ -102,7 +92,7 @@ function Header({
               <Sparkles size={20} />
             </button>
 
-            <button 
+            <button
               className={`iconBtn ${isA11yOpen ? 'active' : ''}`}
               onClick={onToggleA11y}
               title="Accessibility"
@@ -110,7 +100,7 @@ function Header({
               <Eye size={20} />
             </button>
 
-            <button 
+            <button
               className={`iconBtn ${isHistoryOpen ? 'active' : ''}`}
               onClick={onToggleHistory}
               title="History"
@@ -118,7 +108,7 @@ function Header({
               <Clock size={20} />
             </button>
 
-            <button 
+            <button
               className={`iconBtn ${isExportOpen ? 'active' : ''}`}
               onClick={onToggleExport}
               title="Export"
@@ -126,7 +116,7 @@ function Header({
               <Upload size={20} />
             </button>
 
-            <button 
+            <button
               className={`iconBtn ${isBookmarkOpen ? 'active' : ''}`}
               onClick={onToggleBookmark}
               title="Bookmark"

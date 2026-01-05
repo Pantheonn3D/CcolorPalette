@@ -2,16 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import './ModeDropdown.css';
 
-const modes = [
+const MODES = [
   { id: 'auto', label: 'Auto', description: 'Random harmony' },
   { id: 'mono', label: 'Monochromatic', description: 'Single hue' },
   { id: 'analogous', label: 'Analogous', description: 'Adjacent hues' },
   { id: 'complementary', label: 'Complementary', description: 'Opposite hues' },
-  {
-    id: 'splitComplementary',
-    label: 'Split Comp.',
-    description: 'Opposite + adjacent',
-  },
+  { id: 'splitComplementary', label: 'Split Comp.', description: 'Opposite + adjacent' },
   { id: 'triadic', label: 'Triadic', description: 'Three-way split' },
 ];
 
@@ -19,30 +15,28 @@ function ModeDropdown({ value, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const currentMode = modes.find((m) => m.id === value) || modes[0];
+  const currentMode = MODES.find((m) => m.id === value) || MODES[0];
 
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsOpen(false);
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
-
-  useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') setIsOpen(false);
     };
 
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-    }
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen]);
 
   const handleSelect = (modeId) => {
@@ -63,20 +57,16 @@ function ModeDropdown({ value, onChange }) {
       {isOpen && (
         <div className="modeDropdownMenu">
           <div className="modeDropdownHeader">Generate Method</div>
-          {modes.map((mode) => {
-            const isSelected = mode.id === value;
-
-            return (
-              <button
-                key={mode.id}
-                className={`modeDropdownItem ${isSelected ? 'selected' : ''}`}
-                onClick={() => handleSelect(mode.id)}
-              >
-                <span className="modeLabel">{mode.label}</span>
-                <span className="modeDescription">{mode.description}</span>
-              </button>
-            );
-          })}
+          {MODES.map((mode) => (
+            <button
+              key={mode.id}
+              className={`modeDropdownItem ${mode.id === value ? 'selected' : ''}`}
+              onClick={() => handleSelect(mode.id)}
+            >
+              <span className="modeLabel">{mode.label}</span>
+              <span className="modeDescription">{mode.description}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>

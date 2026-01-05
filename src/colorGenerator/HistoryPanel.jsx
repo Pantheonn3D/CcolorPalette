@@ -1,6 +1,8 @@
 import { X, Clock } from 'lucide-react';
 import '../styles/PanelStyles.css';
 
+const PANEL_WIDTH = 260;
+
 function HistoryPanel({
   isOpen,
   onClose,
@@ -8,12 +10,14 @@ function HistoryPanel({
   currentIndex,
   onSelectPalette,
 }) {
+  const reversedHistory = [...history].reverse();
+
   return (
     <div
       className={`panel-column ${isOpen ? 'open' : ''}`}
-      style={{ flexBasis: isOpen ? '260px' : '0px' }}
+      style={{ flexBasis: isOpen ? `${PANEL_WIDTH}px` : '0px' }}
     >
-      <div className="panel-inner" style={{ width: '260px' }}>
+      <div className="panel-inner" style={{ width: `${PANEL_WIDTH}px` }}>
         <div className="panel-header">
           <div className="panel-title">
             <Clock size={18} />
@@ -31,8 +35,8 @@ function HistoryPanel({
               <span>Press space to generate palettes</span>
             </div>
           ) : (
-            <div className="panel-list" style={{ gap: '10px' }}>
-              {[...history].reverse().map((palette, idx) => {
+            <div className="panel-list">
+              {reversedHistory.map((palette, idx) => {
                 const actualIndex = history.length - 1 - idx;
                 const isCurrent = actualIndex === currentIndex;
 
@@ -45,10 +49,7 @@ function HistoryPanel({
                       e.currentTarget.blur();
                     }}
                   >
-                    <div
-                      className="panel-preview-colors"
-                      style={{ height: '40px', borderRadius: '8px' }}
-                    >
+                    <div className="panel-preview-colors">
                       {palette.map((color, colorIdx) => (
                         <div
                           key={colorIdx}
