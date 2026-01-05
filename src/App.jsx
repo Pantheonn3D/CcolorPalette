@@ -4,6 +4,8 @@ import { HelmetProvider } from 'react-helmet-async';
 
 import ColorGenerator from './colorGenerator/ColorGenerator';
 import LandingPage from './pages/LandingPage/LandingPage';
+import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
+import TermsOfService from './pages/Legal/TermsOfService';
 
 function App() {
   return (
@@ -11,6 +13,8 @@ function App() {
       <Router>
         <Routes>
           <Route path="/home" element={<LandingPage />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
           <Route path="/" element={<ColorGenerator />} />
           <Route path="/:hexCodes" element={<ColorGenerator />} />
         </Routes>
