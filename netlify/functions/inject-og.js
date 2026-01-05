@@ -1,21 +1,31 @@
 export default async (request, context) => {
     const url = new URL(request.url);
-    const path = url.pathname.slice(1); // remove leading slash
-  
-    // Check if the URL is a palette (looks like "HEX-HEX-HEX")
-    // e.g. 0D3B27-1F946E...
-    const isPalette = /^[0-9A-Fa-f]{6}(-[0-9A-Fa-f]{6})+$/.test(path);
-  
-    // Get the raw HTML from the origin
-    const response = await context.next();
     
-    // If it's just the homepage or not a palette, return raw HTML
+    // Get path and remove leading/trailing slashes
+    const path = url.pathname.replace(/^\/|\/$/g, '');
+  
+    // Regex to match: 
+    // 1. Starts with 3 or 6 char hex
+    // 2. Followed by hyphens and more hexes
+    // 3. Case insensitive (i flag)
+    const paletteRegex = /^([0-9a-f]{3,6})(-[0-9a-f]{3,6})+$/i;
+    
+    const isPalette = paletteRegex.test(path);
+  
+    // DEBUG: Check your Netlify Function logs to see this
+    console.log(`[Edge] Checking path: "${path}" | Is Palette? ${isPalette}`);
+  
+    const response = await context.next();
+  
+    // If not a palette URL, return original HTML
     if (!isPalette) return response;
   
     // Construct the dynamic image URL
     const ogImageUrl = `${url.origin}/.netlify/functions/og-image?colors=${path}`;
+    
+    // Force large card explicitly
+    const cardType = 'summary_large_image';
   
-    // Use HTMLRewriter to swap the meta tags on the fly
     return new HTMLRewriter()
       .on('meta[property="og:image"]', {
         element(element) {
@@ -27,10 +37,9 @@ export default async (request, context) => {
           element.setAttribute('content', ogImageUrl);
         },
       })
-      // Optional: Update the card type to large to ensure big image
       .on('meta[name="twitter:card"]', {
         element(element) {
-          element.setAttribute('content', 'summary_large_image');
+          element.setAttribute('content', cardType);
         },
       })
       .transform(response);
