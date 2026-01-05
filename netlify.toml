@@ -3,6 +3,10 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[[edge_functions]]
+path = "/*"
+function = "inject-og"
+
 [[redirects]]
   from = "/sitemap.xml"
   to = "/sitemap.xml"
