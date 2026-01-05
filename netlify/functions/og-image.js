@@ -1,11 +1,9 @@
-// netlify/functions/og-image.js
 const { React } = require('react');
 const satori = require('satori').default;
 const { Resvg } = require('@resvg/resvg-js');
 
 exports.handler = async (event) => {
   try {
-    // 1. Parse the hex codes from the URL (e.g. ?colors=FF0000-00FF00-0000FF)
     const { colors } = event.queryStringParameters;
     
     if (!colors) {
@@ -14,20 +12,17 @@ exports.handler = async (event) => {
 
     const hexArray = colors.split('-');
     
-// 2. Fetch a font (Satori requires a font file)
-    // Using raw.githubusercontent.com avoids redirect issues
-    const fontResponse = await fetch(
-        'https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter-Bold.ttf'
-      );
-      
-      if (!fontResponse.ok) {
-        throw new Error('Failed to fetch font file');
-      }
-  
-      const fontData = await fontResponse.arrayBuffer();
+    // 1. FETCH FONT (Using Unpkg which is more stable for bots)
+    const fontUrl = 'https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-700-normal.woff';
+    const fontResponse = await fetch(fontUrl);
 
-    // 3. Define the HTML structure (using React-like object syntax for Satori)
-    // We create a container with a flex row for colors and a footer for the logo
+    if (!fontResponse.ok) {
+      throw new Error(`Failed to fetch font: ${fontResponse.statusText}`);
+    }
+
+    const fontData = await fontResponse.arrayBuffer();
+
+    // 2. DEFINE LAYOUT
     const element = {
       type: 'div',
       props: {
@@ -39,14 +34,14 @@ exports.handler = async (event) => {
           backgroundColor: '#ffffff',
         },
         children: [
-          // The Color Stripes
+          // Color Stripes
           {
             type: 'div',
             props: {
               style: {
                 display: 'flex',
                 width: '100%',
-                height: '85%', // Top 85% is color
+                height: '85%',
               },
               children: hexArray.map((hex) => ({
                 type: 'div',
@@ -60,7 +55,7 @@ exports.handler = async (event) => {
               })),
             },
           },
-          // The Footer (Brand)
+          // Footer
           {
             type: 'div',
             props: {
@@ -69,16 +64,15 @@ exports.handler = async (event) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '100%',
-                height: '15%', // Bottom 15% is white branding area
+                height: '15%',
                 backgroundColor: '#ffffff',
                 borderTop: '1px solid #eaeaea',
-                fontFamily: 'Inter',
+                fontFamily: 'Inter', 
                 fontSize: 32,
                 fontWeight: 700,
                 color: '#111827',
               },
               children: [
-                // You can add an SVG logo icon here if you want
                 {
                   type: 'span',
                   props: {
@@ -89,7 +83,7 @@ exports.handler = async (event) => {
                   type: 'span',
                   props: {
                     style: { marginLeft: 12, color: '#9CA3AF', fontWeight: 400 },
-                    children: '#' + hexArray[0], // Show the first hex code
+                    children: '#' + hexArray[0],
                   },
                 },
               ],
@@ -99,7 +93,7 @@ exports.handler = async (event) => {
       },
     };
 
-    // 4. Convert to SVG using Satori
+    // 3. GENERATE SVG
     const svg = await satori(element, {
       width: 1200,
       height: 630,
@@ -113,17 +107,16 @@ exports.handler = async (event) => {
       ],
     });
 
-    // 5. Convert SVG to PNG using Resvg
+    // 4. RENDER PNG
     const resvg = new Resvg(svg);
     const pngData = resvg.render();
     const pngBuffer = pngData.asPng();
 
-    // 6. Return the image
     return {
       statusCode: 200,
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=31536000, immutable', // Cache forever
+        'Cache-Control': 'public, max-age=31536000, immutable',
       },
       body: pngBuffer.toString('base64'),
       isBase64Encoded: true,
@@ -132,7 +125,7 @@ exports.handler = async (event) => {
     console.error(error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to generate image' }),
+      body: JSON.stringify({ error: 'Failed to generate image', details: error.message }),
     };
   }
 };
