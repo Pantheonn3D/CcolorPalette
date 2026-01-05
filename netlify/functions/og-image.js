@@ -2,6 +2,15 @@ const { React } = require('react');
 const satori = require('satori').default;
 const { Resvg } = require('@resvg/resvg-js');
 
+// Helper: Calculate if text should be black or white based on background
+const getContrastColor = (hexColor) => {
+  const r = parseInt(hexColor.substr(0, 2), 16);
+  const g = parseInt(hexColor.substr(2, 2), 16);
+  const b = parseInt(hexColor.substr(4, 2), 16);
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 128) ? '#000000' : '#FFFFFF';
+};
+
 exports.handler = async (event) => {
   try {
     const { colors } = event.queryStringParameters;
@@ -12,7 +21,7 @@ exports.handler = async (event) => {
 
     const hexArray = colors.split('-');
     
-    // 1. FETCH FONT (Using Unpkg which is more stable for bots)
+    // 1. FETCH FONT (Inter Bold)
     const fontUrl = 'https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-700-normal.woff';
     const fontResponse = await fetch(fontUrl);
 
@@ -28,68 +37,42 @@ exports.handler = async (event) => {
       props: {
         style: {
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'row', // Horizontal layout
           width: '100%',
           height: '100%',
           backgroundColor: '#ffffff',
         },
-        children: [
-          // Color Stripes
-          {
-            type: 'div',
-            props: {
-              style: {
-                display: 'flex',
-                width: '100%',
-                height: '85%',
-              },
-              children: hexArray.map((hex) => ({
-                type: 'div',
+        children: hexArray.map((hex) => ({
+          type: 'div',
+          props: {
+            style: {
+              display: 'flex',
+              flex: 1, // Each color takes equal width
+              height: '100%',
+              backgroundColor: '#' + hex,
+              flexDirection: 'column',
+              justifyContent: 'flex-end', // Push text to bottom
+              alignItems: 'center',       // Center text horizontally
+              paddingBottom: 40,          // Space from bottom
+            },
+            children: [
+              {
+                type: 'span',
                 props: {
                   style: {
-                    flex: 1,
-                    height: '100%',
-                    backgroundColor: '#' + hex,
+                    fontFamily: 'Inter',
+                    fontSize: 28, // Large, readable font
+                    fontWeight: 700,
+                    letterSpacing: '-0.02em',
+                    color: getContrastColor(hex), // Dynamic text color
+                    textTransform: 'uppercase',
                   },
+                  children: '#' + hex,
                 },
-              })),
-            },
+              }
+            ],
           },
-          // Footer
-          {
-            type: 'div',
-            props: {
-              style: {
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '15%',
-                backgroundColor: '#ffffff',
-                borderTop: '1px solid #eaeaea',
-                fontFamily: 'Inter', 
-                fontSize: 32,
-                fontWeight: 700,
-                color: '#111827',
-              },
-              children: [
-                {
-                  type: 'span',
-                  props: {
-                    children: 'CColorPalette',
-                  },
-                },
-                {
-                  type: 'span',
-                  props: {
-                    style: { marginLeft: 12, color: '#9CA3AF', fontWeight: 400 },
-                    children: '#' + hexArray[0],
-                  },
-                },
-              ],
-            },
-          },
-        ],
+        })),
       },
     };
 
