@@ -240,7 +240,7 @@
    .nav-chevron.on-light {
      opacity: 0.4;
    }
-   
+    
    .nav-chevron.on-light:hover {
      opacity: 1;
      background: rgba(0, 0, 0, 0.05);
