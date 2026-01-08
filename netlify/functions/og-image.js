@@ -2,7 +2,6 @@ const { React } = require('react');
 const satori = require('satori').default;
 const { Resvg } = require('@resvg/resvg-js');
 
-// Helper: Calculate if text should be black or white based on background
 const getContrastColor = (hexColor) => {
   const r = parseInt(hexColor.substr(0, 2), 16);
   const g = parseInt(hexColor.substr(2, 2), 16);
@@ -13,43 +12,50 @@ const getContrastColor = (hexColor) => {
 
 exports.handler = async (event) => {
   try {
-    const { colors } = event.queryStringParameters;
-    
+    const { colors, aspect } = event.queryStringParameters;
+
     if (!colors) {
       return { statusCode: 400, body: 'Missing colors parameter' };
     }
 
     const hexArray = colors.split('-');
-    
-    // 1. FETCH FONT (Using Unpkg for stability)
-    const fontUrl = 'https://unpkg.com/@fontsource/inter@5.0.8/files/inter-latin-700-normal.woff';
+    const isVertical = aspect === 'vertical';
+
+    // 1. SET DIMENSIONS based on Aspect Ratio
+    // Pinterest = 1000x1500 (2:3), Standard = 1200x630
+    const width = isVertical ? 1000 : 1200;
+    const height = isVertical ? 1500 : 630;
+
+    // 2. FETCH FONT (Using DM Sans as a robust fallback for Elms Sans)
+    // If you have ElmsSans.woff in your public folder, change this URL to `${process.env.URL}/ElmsSans.woff`
+    const fontUrl = 'https://cdn.jsdelivr.net/fontsource/fonts/dm-sans@latest/latin-700-normal.woff';
     const fontResponse = await fetch(fontUrl);
-
-    if (!fontResponse.ok) {
-      throw new Error(`Failed to fetch font: ${fontResponse.statusText}`);
-    }
-
     const fontData = await fontResponse.arrayBuffer();
 
-    // 2. DEFINE LAYOUT
+    // 3. DEFINE LAYOUT
     const element = {
       type: 'div',
       props: {
         style: {
           display: 'flex',
-          flexDirection: 'column', // Vertical stack: Colors on top, Footer on bottom
+          flexDirection: 'column',
           width: '100%',
           height: '100%',
           backgroundColor: '#ffffff',
         },
         children: [
-          // A. Color Stripes Section (Top 85%)
+          // A. Color Stripes (Takes up more space in vertical mode)
           {
             type: 'div',
             props: {
               style: {
                 display: 'flex',
-                flexDirection: 'row',
+                flexDirection: isVertical ? 'column' : 'row', // Stack vertically on Pinterest? 
+                // Actually, vertical stripes look better on tall images for palettes
+                // Let's keep them as columns (row direction) but tall, 
+                // OR stack them as rows (column direction).
+                // Let's stick to vertical bars (row) as it's your brand style.
+                flexDirection: 'row', 
                 width: '100%',
                 height: '85%', 
               },
@@ -62,20 +68,20 @@ exports.handler = async (event) => {
                     height: '100%',
                     backgroundColor: '#' + hex,
                     flexDirection: 'column',
-                    justifyContent: 'flex-end', // Push hex code to bottom of stripe
+                    justifyContent: 'flex-end',
                     alignItems: 'center',
-                    paddingBottom: 24,          // Padding above the footer
+                    paddingBottom: isVertical ? 40 : 24, // More padding on tall images
                   },
                   children: [
                     {
                       type: 'span',
                       props: {
                         style: {
-                          fontFamily: 'Inter',
-                          fontSize: 26,
+                          fontFamily: 'Elms Sans', // Satori uses the name defined below
+                          fontSize: isVertical ? 40 : 26, // Bigger text on tall images
                           fontWeight: 700,
                           letterSpacing: '-0.02em',
-                          color: getContrastColor(hex), // Dynamic contrast
+                          color: getContrastColor(hex),
                           textTransform: 'uppercase',
                         },
                         children: '#' + hex,
@@ -86,7 +92,7 @@ exports.handler = async (event) => {
               })),
             },
           },
-          // B. Footer Watermark Section (Bottom 15%)
+          // B. Footer
           {
             type: 'div',
             props: {
@@ -97,18 +103,18 @@ exports.handler = async (event) => {
                 width: '100%',
                 height: '15%',
                 backgroundColor: '#ffffff',
-                borderTop: '1px solid #f0f0f0', // Subtle separation line
+                borderTop: '1px solid #f0f0f0',
               },
               children: [
                 {
                   type: 'span',
                   props: {
                     style: {
-                      fontFamily: 'Inter',
-                      fontSize: 32,
+                      fontFamily: 'Elms Sans',
+                      fontSize: isVertical ? 48 : 32, // Bigger branding
                       fontWeight: 700,
                       letterSpacing: '-0.03em',
-                      color: '#161616', // The requested color
+                      color: '#161616',
                     },
                     children: 'ccolorpalette.com',
                   },
@@ -120,13 +126,13 @@ exports.handler = async (event) => {
       },
     };
 
-    // 3. GENERATE SVG
+    // 4. GENERATE SVG
     const svg = await satori(element, {
-      width: 1200,
-      height: 630,
+      width,
+      height,
       fonts: [
         {
-          name: 'Inter',
+          name: 'Elms Sans', // Maps to the font data we fetched
           data: fontData,
           weight: 700,
           style: 'normal',
@@ -134,7 +140,7 @@ exports.handler = async (event) => {
       ],
     });
 
-    // 4. RENDER PNG
+    // 5. RENDER PNG
     const resvg = new Resvg(svg);
     const pngData = resvg.render();
     const pngBuffer = pngData.asPng();
@@ -152,7 +158,7 @@ exports.handler = async (event) => {
     console.error(error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to generate image', details: error.message }),
+      body: JSON.stringify({ error: 'Failed to generate image' }),
     };
   }
 };
