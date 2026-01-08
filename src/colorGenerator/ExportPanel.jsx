@@ -52,7 +52,7 @@ function ExportPanel({
   const [namingScheme, setNamingScheme] = useState('numbered');
   const [showSettings, setShowSettings] = useState(false);
   const [cssFormat, setCssFormat] = useState('vars');
-  const [tailwindFormat, setTailwindFormat] = useState('extend');
+  const [tailwindFormat, setTailwindFormat] = useState('v4');
 
   const hexColors = colors.map((c) => c.hex);
   const getName = NAMING_SCHEMES[namingScheme];
@@ -74,6 +74,15 @@ function ExportPanel({
         contrastOnBlack: getContrastRatio(hex, '#000000'),
       };
     });
+
+  const getTailwindDescription = () => {
+    switch (tailwindFormat) {
+      case 'v4': return 'CSS @theme (v4)';
+      case 'v3-config': return 'Config extend (v3)';
+      case 'v3-layer': return '@layer base (v3)';
+      default: return 'Tailwind Config';
+    }
+  };
 
   const exportOptions = [
     {
@@ -109,10 +118,23 @@ function ExportPanel({
       id: 'tailwind',
       icon: Wind,
       label: 'Tailwind',
-      description: tailwindFormat === 'extend' ? 'Config extend' : '@layer base',
+      description: getTailwindDescription(),
       action: () => {
         let config;
-        if (tailwindFormat === 'extend') {
+        
+        if (tailwindFormat === 'v4') {
+          // Tailwind v4 CSS-first configuration
+          // HELPER: Strip "color-" prefix if present to avoid "--color-color-1"
+          const getV4Name = (i) => getName(i).replace(/^color-/, '');
+          
+          config = `@import "tailwindcss";
+
+@theme {
+  /* Usage: bg-${getV4Name(0)}, text-${getV4Name(1)} */
+${hexColors.map((c, i) => `  --color-${getV4Name(i)}: ${c};`).join('\n')}
+}`;
+        } else if (tailwindFormat === 'v3-config') {
+          // Tailwind v3 JS Configuration
           config = `// tailwind.config.js
 module.exports = {
   theme: {
@@ -124,6 +146,7 @@ ${hexColors.map((c, i) => `        '${getName(i)}': '${c}',`).join('\n')}
   },
 }`;
         } else {
+          // Tailwind v3 CSS Variables + Config
           config = `/* Add to your CSS */
 @layer base {
   :root {
@@ -336,19 +359,28 @@ ${hexColors.map((c, i) => {
               </div>
 
               <div className="export-setting">
-                <label>Tailwind Format</label>
-                <div className="export-setting-options">
-                  <button
-                    className={`panel-btn ${tailwindFormat === 'extend' ? 'active' : ''}`}
-                    onClick={() => setTailwindFormat('extend')}
+                <label>Tailwind Version</label>
+                <div className="export-setting-options three-col">
+                   <button
+                    className={`panel-btn ${tailwindFormat === 'v4' ? 'active' : ''}`}
+                    onClick={() => setTailwindFormat('v4')}
+                    title="CSS @theme variable configuration"
                   >
-                    Config Extend
+                    v4 CSS
                   </button>
                   <button
-                    className={`panel-btn ${tailwindFormat === 'layer' ? 'active' : ''}`}
-                    onClick={() => setTailwindFormat('layer')}
+                    className={`panel-btn ${tailwindFormat === 'v3-config' ? 'active' : ''}`}
+                    onClick={() => setTailwindFormat('v3-config')}
+                    title="Legacy JS config"
                   >
-                    @layer + Vars
+                    v3 Config
+                  </button>
+                  <button
+                    className={`panel-btn ${tailwindFormat === 'v3-layer' ? 'active' : ''}`}
+                    onClick={() => setTailwindFormat('v3-layer')}
+                    title="Legacy @layer base"
+                  >
+                    v3 Layer
                   </button>
                 </div>
               </div>
