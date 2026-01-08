@@ -6,7 +6,7 @@ export default async (request, context) => {
   const path = url.pathname.replace(/^\/|\/$/g, '');
 
   const response = await context.next();
-  
+   
   // Safety check: Ensure it's HTML
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('text/html')) {
