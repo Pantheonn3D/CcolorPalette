@@ -69,6 +69,7 @@ function AccessibilityPanel({
               {COLOR_BLIND_MODES.map((mode) => (
                 <button
                   key={mode.id}
+                  className={`panel-list-item ${colorBlindMode === mode.id ? 'selected' : ''}`} // RE-ADD THIS
                   onClick={(e) => {
                     trackEvent('view_vision_simulation', { mode: mode.id });
                     onColorBlindModeChange(mode.id);

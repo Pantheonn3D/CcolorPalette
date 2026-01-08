@@ -66,6 +66,7 @@ function MethodPanel({
               {HARMONY_MODES.map((mode) => (
                 <button
                   key={mode.id}
+                  className={`panel-list-item ${value === mode.id ? 'selected' : ''}`} // RE-ADD THIS
                   onClick={(e) => {
                     trackEvent('change_harmony', { mode: mode.id });
                     onChange(mode.id);
