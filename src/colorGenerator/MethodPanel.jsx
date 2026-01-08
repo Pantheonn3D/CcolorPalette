@@ -1,5 +1,6 @@
 import { X, Sparkles } from 'lucide-react';
 import '../styles/PanelStyles.css';
+import { trackEvent } from '../utils/analytics';
 
 const HARMONY_MODES = [
   { id: 'auto', label: 'Auto', description: 'Random harmony' },
@@ -29,6 +30,7 @@ function MethodPanel({
   onConstraintsChange,
 }) {
   const handleMoodChange = (mood) => {
+    trackEvent('change_mood', { mood });
     onConstraintsChange({ ...constraints, mood });
   };
 
@@ -64,8 +66,8 @@ function MethodPanel({
               {HARMONY_MODES.map((mode) => (
                 <button
                   key={mode.id}
-                  className={`panel-list-item ${value === mode.id ? 'selected' : ''}`}
                   onClick={(e) => {
+                    trackEvent('change_harmony', { mode: mode.id });
                     onChange(mode.id);
                     e.currentTarget.blur();
                   }}

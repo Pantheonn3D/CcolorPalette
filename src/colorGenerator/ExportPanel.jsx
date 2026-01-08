@@ -14,6 +14,7 @@ import {
 import { hexToHsl } from '../utils/colorUtils';
 import '../styles/PanelStyles.css';
 import './ExportPanel.css';
+import { trackEvent } from '../utils/analytics';
 
 const PANEL_WIDTH = 320;
 
@@ -398,6 +399,11 @@ ${hexColors.map((c, i) => {
                   key={option.id}
                   className={`panel-export-btn ${isCopied ? 'copied' : ''}`}
                   onClick={(e) => {
+                    trackEvent('palette_export', { 
+                      format: option.id, 
+                      tailwind_version: tailwindFormat,
+                      naming_scheme: namingScheme 
+                    });
                     option.action();
                     e.currentTarget.blur();
                   }}

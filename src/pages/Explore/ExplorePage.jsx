@@ -4,6 +4,7 @@ import { ArrowLeft, Search } from 'lucide-react';
 import { DIRECTORY_PALETTES } from '../../data/paletteDirectory';
 import logo from '../../assets/Frame4ico.png';
 import './ExplorePage.css';
+import { trackEvent } from '../../utils/analytics';
 
 function ExplorePage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,6 +14,15 @@ function ExplorePage() {
     if (!searchTerm) return DIRECTORY_PALETTES;
     const term = searchTerm.toUpperCase().replace('#', '');
     return DIRECTORY_PALETTES.filter(p => p.includes(term));
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (searchTerm.length > 2) {
+      const timer = setTimeout(() => {
+        trackEvent('search_directory', { term: searchTerm });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
   }, [searchTerm]);
 
   return (

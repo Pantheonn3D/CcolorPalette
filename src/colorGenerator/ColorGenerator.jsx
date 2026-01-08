@@ -26,6 +26,7 @@ import HistoryPanel from './HistoryPanel';
 import ExportPanel from './ExportPanel';
 import BookmarkPanel from './BookmarkPanel';
 import './ColorGenerator.css';
+import { trackEvent } from '../utils/analytics';
 
 import {
   generateRandomPalette,
@@ -199,11 +200,17 @@ function ColorGenerator() {
   );
 
   const undo = useCallback(() => {
-    if (canUndo) setHistoryIndex((prev) => prev - 1);
+    if (canUndo) {
+      trackEvent('palette_undo');
+      setHistoryIndex((prev) => prev - 1);
+    }
   }, [canUndo]);
 
   const redo = useCallback(() => {
-    if (canRedo) setHistoryIndex((prev) => prev + 1);
+    if (canRedo) {
+      trackEvent('palette_redo');
+      setHistoryIndex((prev) => prev + 1);
+    }
   }, [canRedo]);
 
   const goToHistoryIndex = useCallback(
@@ -258,6 +265,7 @@ function ColorGenerator() {
 
   // Color Actions
   const addColorAtIndex = (index) => {
+    trackEvent('add_color', { current_count: colors.length });
     if (!canAddMoreColors) return;
 
     const colorBefore = colors[index].hex;
@@ -277,6 +285,7 @@ function ColorGenerator() {
   };
 
   const removeColor = (id) => {
+    trackEvent('remove_color', { current_count: colors.length });
     if (colors.length <= 2) return;
 
     setRemovingId(id);
@@ -287,6 +296,8 @@ function ColorGenerator() {
   };
 
   const toggleLock = (id) => {
+    const isLocking = !colors.find(c => c.id === id).locked;
+    trackEvent('toggle_lock', { action: isLocking ? 'lock' : 'unlock' });
     updateColors(colors.map((c) => (c.id === id ? { ...c, locked: !c.locked } : c)));
   };
 
@@ -306,6 +317,7 @@ function ColorGenerator() {
   };
 
   const pickShade = (originalId, newHex) => {
+    trackEvent('pick_shade_variation');
     updateColors(colors.map((c) => (c.id === originalId ? { ...c, hex: newHex } : c)));
     setActiveShadeId(null);
   };

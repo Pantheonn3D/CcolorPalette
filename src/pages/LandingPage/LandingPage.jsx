@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../assets/Frame4ico.png';
+import { trackEvent } from '../../utils/analytics';
 import {
   // Only import icons we actually use
   Sparkles,
@@ -557,7 +558,10 @@ function LandingPage() {
           </p>
 
           <div className="hero-buttons">
-            <button className="btn-primary btn-large" onClick={() => navigate('/')}>
+          <button className="btn-primary btn-large" onClick={() => {
+            trackEvent('cta_click', { location: 'hero_main' });
+            navigate('/');
+          }}>
               <Palette size={20} />
               <span>Open Generator</span>
             </button>
@@ -629,8 +633,9 @@ function LandingPage() {
                 <a 
                   key={index} 
                   href={`/${paletteString}`}
-                  className="palette-card"
-                  aria-label={`Open palette ${paletteString}`}
+                  className="palette-card" // Keep this for styling!
+                  aria-label={`Open palette ${paletteString}`} // Keep this for accessibility!
+                  onClick={() => trackEvent('trending_palette_click', { palette: paletteString })} // Add this for data!
                 >
                   <div className="palette-preview">
                     {colors.map((hex, i) => (

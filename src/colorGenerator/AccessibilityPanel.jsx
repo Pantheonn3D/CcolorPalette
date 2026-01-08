@@ -1,5 +1,6 @@
 import { X, Eye, Check, AlertTriangle } from 'lucide-react';
 import '../styles/PanelStyles.css';
+import { trackEvent } from '../utils/analytics';
 
 const PANEL_WIDTH = 280;
 
@@ -68,8 +69,8 @@ function AccessibilityPanel({
               {COLOR_BLIND_MODES.map((mode) => (
                 <button
                   key={mode.id}
-                  className={`panel-list-item ${colorBlindMode === mode.id ? 'selected' : ''}`}
                   onClick={(e) => {
+                    trackEvent('view_vision_simulation', { mode: mode.id });
                     onColorBlindModeChange(mode.id);
                     e.currentTarget.blur();
                   }}
