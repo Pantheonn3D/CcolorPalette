@@ -30,7 +30,7 @@ exports.handler = async (event) => {
     const siteUrl = new URL(event.rawUrl).origin;
         
     // Make sure the filename matches exactly what you put in the public folder!
-    const fontUrl = `${siteUrl}/ElmsSans-Medium.ttf`; 
+    const fontUrl = `${siteUrl}/ElmsSans-Bold.ttf`; 
 
     const fontResponse = await fetch(fontUrl);
 
@@ -123,7 +123,7 @@ exports.handler = async (event) => {
                   props: {
                     style: {
                       fontFamily: 'Elms Sans',
-                      fontSize: isVertical ? 48 : 32, // Bigger branding
+                      fontSize: isVertical ? 64 : 48, // Bigger branding
                       fontWeight: 700,
                       letterSpacing: '-0.03em',
                       color: '#161616',
