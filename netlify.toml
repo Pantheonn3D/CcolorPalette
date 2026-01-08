@@ -7,6 +7,10 @@
 path = "/*"
 function = "inject-og"
 
+[[edge_functions]]
+  function = "bot-logger"  # Must match the filename (without .js)
+  path = "/*"              # Must be "/*" to catch the homepage
+
 [[redirects]]
   from = "/sitemap.xml"
   to = "/sitemap.xml"
