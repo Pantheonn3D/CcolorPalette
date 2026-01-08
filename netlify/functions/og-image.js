@@ -26,11 +26,23 @@ exports.handler = async (event) => {
     const width = isVertical ? 1000 : 1200;
     const height = isVertical ? 1500 : 630;
 
-    // 2. FETCH FONT (Using DM Sans as a robust fallback for Elms Sans)
-    // If you have ElmsSans.woff in your public folder, change this URL to `${process.env.URL}/ElmsSans.woff`
-    const fontUrl = 'https://cdn.jsdelivr.net/fontsource/fonts/dm-sans@latest/latin-700-normal.woff';
+    // This dynamically gets your site's URL (works in localhost AND production)
+    const siteUrl = new URL(event.rawUrl).origin;
+        
+    // Make sure the filename matches exactly what you put in the public folder!
+    const fontUrl = `${siteUrl}/ElmsSans-Medium.ttf`; 
+
     const fontResponse = await fetch(fontUrl);
-    const fontData = await fontResponse.arrayBuffer();
+
+    if (!fontResponse.ok) {
+      // Fallback to a standard font if the file isn't found
+      console.log("Font not found, falling back");
+      const fallbackUrl = 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff';
+      const fallback = await fetch(fallbackUrl);
+      var fontData = await fallback.arrayBuffer();
+    } else {
+      var fontData = await fontResponse.arrayBuffer();
+    }
 
     // 3. DEFINE LAYOUT
     const element = {
