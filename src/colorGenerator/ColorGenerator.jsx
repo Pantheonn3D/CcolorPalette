@@ -129,6 +129,8 @@ function ColorGenerator() {
   const [removingId, setRemovingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [activeShadeId, setActiveShadeId] = useState(null);
+  const [editingId, setEditingId] = useState(null); // ID of the color being edited
+  const [editValue, setEditValue] = useState('');   // Temporary value of the input
 
   // Drag State
   const [dragState, setDragState] = useState(null);
@@ -321,6 +323,57 @@ function ColorGenerator() {
       setTimeout(() => setCopiedId(null), 1500);
     } catch (err) {
       console.error('Failed to copy:', err);
+    }
+  };
+
+  // --- Hex Editing Handlers ---
+
+  const handleHexClick = (id, currentHex, e) => {
+    e.stopPropagation(); // Prevent dragging or other card clicks
+    setEditingId(id);
+    setEditValue(currentHex.replace('#', '')); // Show without hash for easier typing
+  };
+
+  const commitHexChange = (id) => {
+    if (!editValue) {
+      setEditingId(null);
+      return;
+    }
+
+    // Validate Hex (allow 3 or 6 chars)
+    const validHexPattern = /^([0-9A-F]{3}){1,2}$/i;
+    let cleanHex = editValue.replace(/[^0-9A-F]/gi, '').toUpperCase();
+
+    if (validHexPattern.test(cleanHex)) {
+      // Expand 3-char hex to 6-char
+      if (cleanHex.length === 3) {
+        cleanHex = cleanHex.split('').map(char => char + char).join('');
+      }
+      
+      const newFullHex = `#${cleanHex}`;
+      
+      // Update state: Set new hex AND lock the color
+      updateColors(colors.map(c => {
+        if (c.id === id) {
+          return { ...c, hex: newFullHex, locked: true }; // Lock it!
+        }
+        return c;
+      }));
+    } 
+    
+    // Reset editing state
+    setEditingId(null);
+    setEditValue('');
+  };
+
+  const handleHexKeyDown = (e, id) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitHexChange(id);
+    } else if (e.key === 'Escape') {
+      // Cancel editing
+      setEditingId(null);
+      setEditValue('');
     }
   };
 
@@ -1012,13 +1065,38 @@ useEffect(() => {
                         </div>
 
                         <div className="color-content">
-                          <h2
-                            className={`color-hex ${isCopied ? 'copied' : ''}`}
-                            style={{ color: textColor }}
-                            onClick={() => copyHex(color.id, color.hex)}
-                          >
-                            {isCopied ? 'Copied!' : color.hex.replace('#', '')}
-                          </h2>
+                          {editingId === color.id ? (
+                            <div className="hex-input-wrapper">
+                              <span style={{ color: textColor, opacity: 0.7 }}>#</span>
+                                <input
+                                  autoFocus
+                                  className="hex-input"
+                                  style={{ color: textColor }}
+                                  value={editValue}
+                                  onChange={(e) => {
+                                    // 1. Strip the '#' and any non-hex characters immediately
+                                    let val = e.target.value.replace(/[^0-9A-F]/gi, '').toUpperCase();
+                                    
+                                    // 2. Limit to 6 characters so it doesn't overflow
+                                    if (val.length > 6) val = val.slice(0, 6);
+                                    
+                                    setEditValue(val);
+                                  }}
+                                  onBlur={() => commitHexChange(color.id)}
+                                  onKeyDown={(e) => handleHexKeyDown(e, color.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                          ) : (
+                            <h2
+                              className={`color-hex ${isCopied ? 'copied' : ''}`}
+                              style={{ color: textColor }}
+                              onClick={(e) => handleHexClick(color.id, color.hex, e)}
+                              title="Click to edit"
+                            >
+                              {isCopied ? 'Copied!' : color.hex.replace('#', '')}
+                            </h2>
+                          )}
                         </div>
 
                         {color.locked && (

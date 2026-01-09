@@ -106,7 +106,8 @@ const generateHarmoniousHues = (mode, count, constraints) => {
     case 'analogous':
       const range = 50; 
       for (let i = 0; i < count; i++) {
-        const offset = (i / (count - 1)) * range - (range / 2);
+        const progress = count > 1 ? i / (count - 1) : 0.5;
+        const offset = progress * range - (range / 2);
         hues.push((base + offset + jitter(8) + 360) % 360);
       }
       break;
@@ -135,7 +136,7 @@ const generateCohesiveVariations = (hues, mood, count) => {
   const strategy = Math.random();
   
   for (let i = 0; i < count; i++) {
-    const t = i / (count - 1); 
+    const t = count > 1 ? i / (count - 1) : 0.5; 
     let s, l;
 
     if (mood === 'pastel') s = random(30, 60);
