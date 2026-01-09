@@ -1,9 +1,5 @@
 // src/utils/colorUtils.js
 
-// ============================================
-// 1. BASIC CONVERTERS & MATH
-// ============================================
-
 export const hslToHex = (h, s, l) => {
   l /= 100;
   const a = (s * Math.min(l, 1 - l)) / 100;
@@ -106,6 +102,7 @@ const generateHarmoniousHues = (mode, count, constraints) => {
     case 'analogous':
       const range = 50; 
       for (let i = 0; i < count; i++) {
+        // FIX: Ensure no division by zero if count is 1
         const progress = count > 1 ? i / (count - 1) : 0.5;
         const offset = progress * range - (range / 2);
         hues.push((base + offset + jitter(8) + 360) % 360);
@@ -113,7 +110,9 @@ const generateHarmoniousHues = (mode, count, constraints) => {
       break;
     case 'complementary':
       for (let i = 0; i < count; i++) {
-        if (i < 3) hues.push((base + jitter(15) + 360) % 360);
+        // FIX: Split evenly based on count, not hardcoded "3"
+        // This ensures 2-color palettes get 1 base and 1 complement
+        if (i < Math.ceil(count / 2)) hues.push((base + jitter(15) + 360) % 360);
         else hues.push((base + 180 + jitter(15) + 360) % 360);
       }
       break;
@@ -136,6 +135,7 @@ const generateCohesiveVariations = (hues, mood, count) => {
   const strategy = Math.random();
   
   for (let i = 0; i < count; i++) {
+    // FIX: Ensure no division by zero if count is 1
     const t = count > 1 ? i / (count - 1) : 0.5; 
     let s, l;
 
@@ -161,7 +161,7 @@ const generateCohesiveVariations = (hues, mood, count) => {
 };
 
 // ============================================
-// 3. MAIN PALETTE GENERATOR
+// 3. MAIN PALETTE GENERATOR (SMART WEIGHTS)
 // ============================================
 
 export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}) => {
@@ -169,11 +169,34 @@ export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}
 
   if (mode === 'auto') {
     const roll = Math.random();
-    if (roll < 0.40) harmonyMode = 'analogous';      
-    else if (roll < 0.65) harmonyMode = 'mono';           
-    else if (roll < 0.85) harmonyMode = 'complementary';  
-    else if (roll < 0.95) harmonyMode = 'splitComplementary'; 
-    else harmonyMode = 'triadic';        
+
+    // FIX: Apply Smart Weights based on count to avoid "unlucky" palettes
+    if (count <= 2) {
+      // 2 Colors: Focus on contrast or strict simplicity
+      if (roll < 0.50) harmonyMode = 'complementary';       
+      else if (roll < 0.80) harmonyMode = 'mono';           
+      else harmonyMode = 'analogous';                       
+    
+    } else if (count === 3) {
+      // 3 Colors: The sweet spot for Triads
+      if (roll < 0.40) harmonyMode = 'splitComplementary';  
+      else if (roll < 0.70) harmonyMode = 'triadic';        
+      else if (roll < 0.90) harmonyMode = 'analogous';      
+      else harmonyMode = 'mono';
+    
+    } else if (count >= 6) {
+      // 6+ Colors: Force order to prevent chaos
+      if (roll < 0.60) harmonyMode = 'analogous';           
+      else if (roll < 0.85) harmonyMode = 'mono';           
+      else harmonyMode = 'splitComplementary';              
+    } else {
+      // 4-5 Colors: Standard distribution
+      if (roll < 0.45) harmonyMode = 'analogous';
+      else if (roll < 0.65) harmonyMode = 'mono';
+      else if (roll < 0.85) harmonyMode = 'complementary';
+      else if (roll < 0.95) harmonyMode = 'splitComplementary';
+      else harmonyMode = 'triadic';
+    }
   }
 
   const hues = generateHarmoniousHues(harmonyMode, count, constraints);
@@ -183,8 +206,11 @@ export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}
   for (let i = 0; i < count; i++) {
     const h = hues[i];
     let { s, l } = slValues[i];
+    
     const polished = adjustForVibrancy(h, s, l);
+    
     if (constraints.darkModeFriendly && polished.l > 85) polished.l = 85;
+    
     palette.push(hslToHex(polished.h, polished.s, polished.l));
   }
 
