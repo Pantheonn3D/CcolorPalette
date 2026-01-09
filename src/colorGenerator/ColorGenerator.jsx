@@ -1088,7 +1088,6 @@ useEffect(() => {
                         <div className="color-content">
                           {editingId === color.id ? (
                             <div className="hex-input-wrapper">
-                              <span style={{ color: textColor, opacity: 0.7 }}>#</span>
                                 <input
                                   autoFocus
                                   className="hex-input"

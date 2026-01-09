@@ -60,7 +60,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1px; /* Tiny space between # and number */
     
     /* Match the .color-hex styling exactly */
     font-size: var(--font-xl);
@@ -83,8 +82,8 @@
     letter-spacing: inherit;
     
     /* Fixed width for exactly 6 characters */
-    width: 6ch; 
-    min-width: 6ch;
+    width: 7ch; 
+    min-width: 7ch;
     
     text-transform: uppercase;
     padding: 0;
