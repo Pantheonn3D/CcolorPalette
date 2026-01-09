@@ -87,9 +87,18 @@ const adjustForVibrancy = (h, s, l) => {
 };
 
 const generateHarmoniousHues = (mode, count, constraints) => {
-  let base = random(0, 360);
-  if (base > 80 && base < 120 && Math.random() > 0.2) {
-    base = (base + 100) % 360; 
+  // FIX: Check if we passed a specific baseHue in constraints
+  let base;
+  
+  if (constraints && typeof constraints.baseHue === 'number') {
+    // Use the locked color's hue
+    base = constraints.baseHue;
+  } else {
+    // Otherwise pick a random one
+    base = random(0, 360);
+    if (base > 80 && base < 120 && Math.random() > 0.2) {
+      base = (base + 100) % 360; 
+    }
   }
 
   const hues = [];

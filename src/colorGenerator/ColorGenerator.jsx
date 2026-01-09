@@ -106,6 +106,14 @@ function ColorGenerator() {
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
+  // FIX 1: Create a ref to track the live history index
+  const historyIndexRef = useRef(historyIndex);
+
+  // FIX 2: Keep the ref synced with state
+  useEffect(() => {
+    historyIndexRef.current = historyIndex;
+  }, [historyIndex]);
+
   // Panel State
   const [openPanels, setOpenPanels] = useState([]);
 
@@ -121,8 +129,8 @@ function ColorGenerator() {
   const [colorBlindMode, setColorBlindMode] = useState('normal');
 
   // Core Data
-  const currentEntry = history[historyIndex];
-  const colors = Array.isArray(currentEntry) ? currentEntry : currentEntry.colors;
+  const currentEntry = history[historyIndex] || history[history.length - 1];
+  const colors = currentEntry ? (Array.isArray(currentEntry) ? currentEntry : currentEntry.colors) : [];
 
   // UI State
   const [newColorId, setNewColorId] = useState(null);
@@ -192,7 +200,8 @@ function ColorGenerator() {
   const updateColors = useCallback(
     (newColors) => {
       setHistory((prev) => {
-        const newHistory = prev.slice(0, historyIndex + 1);
+        const currentIndex = historyIndexRef.current;
+        const newHistory = prev.slice(0, currentIndex + 1);
         
         // NEW: Store as an object so HistoryPanel can see the vision mode
         newHistory.push({
@@ -245,7 +254,19 @@ function ColorGenerator() {
 
       if (unlockedCount <= 0) return;
 
-      const newPalette = generateRandomPalette(generationMode, unlockedCount, constraints);
+      // FIX: Calculate a "seed" from the locked colors
+      let generationConstraints = { ...constraints };
+      
+      if (lockedColors.length > 0) {
+        // Use the first locked color as the anchor for harmony
+        // (You could also average them, but using the first is safer)
+        const lockedHsl = hexToHsl(lockedColors[0].hex);
+        generationConstraints.baseHue = lockedHsl.h;
+      }
+
+      // Pass the updated constraints
+      const newPalette = generateRandomPalette(generationMode, unlockedCount, generationConstraints);
+      
       const newColors = newPalette.map((hex) => ({
         id: generateId(),
         hex,
