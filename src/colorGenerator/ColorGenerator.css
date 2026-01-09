@@ -87,8 +87,9 @@
     
     text-transform: uppercase;
     padding: 0;
+    padding-bottom: 7px;
     margin: 0;
-    text-align: left;
+    text-align: center;
     
     /* Remove browser default styling */
     -webkit-appearance: none;
