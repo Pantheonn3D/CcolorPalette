@@ -1100,12 +1100,16 @@ useEffect(() => {
             <h3 className="seo-section-title">Explore Related Palettes</h3>
             <div>
               {Array.from({ length: 6 }).map((_, i) => {
-                const randomHexes = generateRandomPalette('auto', 5 + Math.floor(Math.random() * 3), {}).map((h) =>
-                  h.replace('#', '')
-                );
+                // NEW: Use the first color of the CURRENT palette as a "seed"
+                // This ensures this page always suggests similar "vibe" palettes
+                const baseHex = colors[0].hex; 
+                const randomHexes = generateRandomPalette('analogous', 5, { seed: baseHex + i })
+                  .map((h) => h.replace('#', ''));
+                  
                 return (
                   <a key={i} href={`/${randomHexes.join('-')}`}>
-                    Generated Palette {i + 1}
+                    {/* Use the traits to give the link a better name for SEO */}
+                    Similar {seoData.traits?.temperature || 'Modern'} Palette {i + 1}
                   </a>
                 );
               })}

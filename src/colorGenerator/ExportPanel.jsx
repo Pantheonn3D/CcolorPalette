@@ -15,6 +15,7 @@ import { hexToHsl } from '../utils/colorUtils';
 import '../styles/PanelStyles.css';
 import './ExportPanel.css';
 import { trackEvent } from '../utils/analytics';
+import { submitToIndexNow } from '../utils/seo';
 
 const PANEL_WIDTH = 320;
 
@@ -404,6 +405,8 @@ ${hexColors.map((c, i) => {
                       tailwind_version: tailwindFormat,
                       naming_scheme: namingScheme 
                     });
+                    const currentUrl = window.location.href;
+                    submitToIndexNow(currentUrl);
                     option.action();
                     e.currentTarget.blur();
                   }}
