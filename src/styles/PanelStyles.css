@@ -371,14 +371,20 @@
   font-weight: 600;
 }
 
-.panel-badge.pass {
-  background: var(--color-success-bg);
-  color: var(--color-success-text);
+.panel-badge.warn {
+  background-color: #FFF4E5;
+  color: #B76E00;
 }
 
+/* Ensure fail looks correct too (if not already there) */
 .panel-badge.fail {
-  background: var(--color-error-bg);
-  color: var(--color-error-text);
+  background-color: #FFEBEE;
+  color: #C62828;
+}
+
+.panel-badge.pass {
+  background-color: #E8F5E9;
+  color: #2E7D32;
 }
 
 /* === PANEL EXPORT GRID === */

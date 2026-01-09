@@ -125,7 +125,21 @@ function AccessibilityPanel({
               {colors.slice(0, -1).map((color, i) => {
                 const nextColor = colors[i + 1];
                 const ratio = getContrastRatio(color.hex, nextColor.hex);
-                const pass = ratio >= 3;
+                
+                // NEW LOGIC: 3-Tier System
+                let status = 'fail';
+                let Icon = X;
+                let label = 'Fail';
+
+                if (ratio >= 3) {
+                  status = 'pass';
+                  Icon = Check;
+                  label = 'Good';
+                } else if (ratio >= 1.6) { // "Decent" threshold
+                  status = 'warn';
+                  Icon = AlertTriangle;
+                  label = 'Low';
+                }
 
                 return (
                   <div key={color.id} className="panel-adjacent-item">
@@ -136,8 +150,10 @@ function AccessibilityPanel({
                     <span className="panel-adjacent-ratio">
                       {ratio.toFixed(1)}:1
                     </span>
-                    <div className={`panel-badge ${pass ? 'pass' : 'fail'}`}>
-                      {pass ? <Check size={12} /> : <AlertTriangle size={12} />}
+                    {/* Updated Badge */}
+                    <div className={`panel-badge ${status}`} title={label}>
+                      <Icon size={12} />
+                      {status === 'warn' && <span style={{marginLeft:4}}>Low</span>}
                     </div>
                   </div>
                 );
