@@ -168,7 +168,6 @@
     font-size: var(--font-xs);
     font-weight: 500;
     color: var(--color-text-secondary);
-    font-family: var(--font-mono);
   }
   
   /* === SETTINGS TOGGLE === */
@@ -241,7 +240,6 @@
     margin-top: var(--space-2);
     font-size: 11px;
     color: var(--color-text-faint);
-    font-family: var(--font-mono);
   }
   
   /* === SCROLLBAR === */

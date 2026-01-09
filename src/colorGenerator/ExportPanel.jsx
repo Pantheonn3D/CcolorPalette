@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   X,
   Link,
@@ -11,7 +11,7 @@ import {
   ChevronDown,
   Settings2,
 } from 'lucide-react';
-import { hexToHsl } from '../utils/colorUtils';
+import { hexToHsl, simulateColorBlindness } from '../utils/colorUtils';
 import '../styles/PanelStyles.css';
 import './ExportPanel.css';
 import { trackEvent } from '../utils/analytics';
@@ -49,6 +49,7 @@ function ExportPanel({
   colors,
   generationMode,
   constraints,
+  colorBlindMode,
 }) {
   const [copiedOption, setCopiedOption] = useState(null);
   const [namingScheme, setNamingScheme] = useState('numbered');
@@ -56,8 +57,19 @@ function ExportPanel({
   const [cssFormat, setCssFormat] = useState('vars');
   const [tailwindFormat, setTailwindFormat] = useState('v4');
 
-  const hexColors = colors.map((c) => c.hex);
+  // ADD THIS LINE HERE (Ensure it is above the useMemo)
+  const [applySimulation, setApplySimulation] = useState(false);
+
+  const rawHexColors = colors.map((c) => c.hex);
   const getName = NAMING_SCHEMES[namingScheme];
+
+  // Apply simulation if toggled AND a mode is selected
+  const hexColors = useMemo(() => {
+    if (applySimulation && colorBlindMode !== 'normal') {
+      return rawHexColors.map(hex => simulateColorBlindness(hex, colorBlindMode));
+    }
+    return rawHexColors;
+  }, [rawHexColors, applySimulation, colorBlindMode]);
 
   const showCopied = (option) => {
     setCopiedOption(option);
@@ -385,6 +397,37 @@ ${hexColors.map((c, i) => {
                     v3 Layer
                   </button>
                 </div>
+              </div>
+              <div className="export-setting">
+                <label>Vision Simulation</label>
+                <div className="export-setting-options">
+                  <button
+                    className={`panel-btn ${!applySimulation ? 'active' : ''}`}
+                    onClick={() => setApplySimulation(false)}
+                  >
+                    Raw Colors
+                  </button>
+                  <button
+                    className={`panel-btn ${applySimulation ? 'active' : ''}`}
+                    onClick={() => {
+                      setApplySimulation(true);
+                      trackEvent('enable_colorblind_export', { mode: colorBlindMode });
+                    }}
+                    // Grey out and disable if vision mode is normal
+                    disabled={colorBlindMode === 'normal'}
+                    style={{ 
+                      opacity: colorBlindMode === 'normal' ? 0.5 : 1,
+                    }}
+                    title={colorBlindMode === 'normal' ? 'Select a vision mode in Accessibility panel first' : ''}
+                  >
+                    Simulated
+                  </button>
+                </div>
+                {applySimulation && colorBlindMode !== 'normal' && (
+                  <span className="export-setting-preview">
+                    Exporting for: {colorBlindMode.charAt(0).toUpperCase() + colorBlindMode.slice(1)}
+                  </span>
+                )}
               </div>
             </div>
           )}

@@ -74,7 +74,6 @@
   .editor-preview-hex {
     font-size: var(--font-lg);
     font-weight: 700;
-    font-family: var(--font-mono);
   }
   
   .editor-field {
@@ -103,7 +102,6 @@
     background: var(--color-bg-card);
     border-radius: var(--radius-lg);
     padding: var(--space-3);
-    font-family: var(--font-mono);
     font-size: var(--font-base);
   }
   

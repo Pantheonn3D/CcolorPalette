@@ -141,7 +141,6 @@
   
   .contrast-hex {
     font-size: var(--font-xs);
-    font-family: var(--font-mono);
     color: var(--color-text-primary);
   }
   

@@ -99,7 +99,10 @@ function ColorGenerator() {
 
   // History State
   const [history, setHistory] = useState(() => [
-    createColorObjects(generateRandomPalette()),
+    { 
+      colors: createColorObjects(generateRandomPalette()), 
+      visionMode: 'normal' 
+    },
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -118,7 +121,8 @@ function ColorGenerator() {
   const [colorBlindMode, setColorBlindMode] = useState('normal');
 
   // Core Data
-  const colors = history[historyIndex];
+  const currentEntry = history[historyIndex];
+  const colors = Array.isArray(currentEntry) ? currentEntry : currentEntry.colors;
 
   // UI State
   const [newColorId, setNewColorId] = useState(null);
@@ -187,16 +191,25 @@ function ColorGenerator() {
     (newColors) => {
       setHistory((prev) => {
         const newHistory = prev.slice(0, historyIndex + 1);
-        newHistory.push(newColors);
+        
+        // NEW: Store as an object so HistoryPanel can see the vision mode
+        newHistory.push({
+          colors: newColors,
+          visionMode: colorBlindMode // This captures the current state
+        });
+        
         if (newHistory.length > MAX_HISTORY) {
           newHistory.shift();
           return newHistory;
         }
         return newHistory;
       });
-      setHistoryIndex((prev) => Math.min(prev + 1, MAX_HISTORY - 1));
+      setHistoryIndex((prev) => {
+        const nextIndex = prev + 1;
+        return nextIndex >= MAX_HISTORY ? MAX_HISTORY - 1 : nextIndex;
+      });
     },
-    [historyIndex]
+    [historyIndex, colorBlindMode] // Added colorBlindMode to dependencies
   );
 
   const undo = useCallback(() => {
@@ -1068,6 +1081,7 @@ useEffect(() => {
             colors={colors}
             generationMode={generationMode}
             constraints={constraints}
+            colorBlindMode={colorBlindMode}
           />
 
           <BookmarkPanel

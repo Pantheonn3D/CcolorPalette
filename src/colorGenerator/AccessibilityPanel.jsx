@@ -69,7 +69,7 @@ function AccessibilityPanel({
               {COLOR_BLIND_MODES.map((mode) => (
                 <button
                   key={mode.id}
-                  className={`panel-list-item ${colorBlindMode === mode.id ? 'selected' : ''}`} // RE-ADD THIS
+                  className={`panel-list-item ${colorBlindMode === mode.id ? 'selected' : ''}`}
                   onClick={(e) => {
                     trackEvent('view_vision_simulation', { mode: mode.id });
                     onColorBlindModeChange(mode.id);
@@ -83,10 +83,10 @@ function AccessibilityPanel({
             </div>
           </div>
 
-          {/* Text Contrast */}
+          {/* Text Contrast (New Grid Layout) */}
           <div className="panel-section">
-            <label className="panel-label">Text Contrast (on each color)</label>
-            <div className="panel-list">
+            <label className="panel-label">Text Contrast</label>
+            <div className="panel-contrast-grid">
               {colors.map((color) => {
                 const whiteRatio = getContrastRatio(color.hex, '#FFFFFF');
                 const blackRatio = getContrastRatio(color.hex, '#000000');
@@ -95,22 +95,22 @@ function AccessibilityPanel({
                 const rating = getWCAGRating(bestRatio);
 
                 return (
-                  <div key={color.id} className="panel-contrast-item">
-                    <div
-                      className="panel-contrast-swatch"
-                      style={{ backgroundColor: color.hex, color: bestColor }}
-                    >
-                      Aa
+                  <div 
+                    key={color.id} 
+                    className="panel-contrast-card"
+                    style={{ backgroundColor: color.hex, color: bestColor }}
+                  >
+                    <div className="contrast-card-header">
+                      <span className="contrast-aa">Aa</span>
+                      <div className={`contrast-badge ${rating.pass ? 'pass' : 'fail'}`} style={{ borderColor: bestColor }}>
+                        {rating.level}
+                      </div>
                     </div>
-                    <div className="panel-contrast-info">
-                      <span className="panel-contrast-hex">{color.hex}</span>
-                      <span className="panel-contrast-ratio">
+                    <div className="contrast-card-footer">
+                      <span className="contrast-hex">{color.hex}</span>
+                      <span className="contrast-ratio" style={{ opacity: 0.7 }}>
                         {bestRatio.toFixed(1)}:1
                       </span>
-                    </div>
-                    <div className={`panel-badge ${rating.pass ? 'pass' : 'fail'}`}>
-                      {rating.pass ? <Check size={12} /> : <AlertTriangle size={12} />}
-                      {rating.level}
                     </div>
                   </div>
                 );
@@ -118,42 +118,40 @@ function AccessibilityPanel({
             </div>
           </div>
 
-          {/* Adjacent Color Contrast */}
+          {/* Adjacent Color Contrast (New Pill Layout) */}
           <div className="panel-section">
-            <label className="panel-label">Adjacent Color Contrast</label>
+            <label className="panel-label">Adjacent Contrast</label>
             <div className="panel-list">
               {colors.slice(0, -1).map((color, i) => {
                 const nextColor = colors[i + 1];
                 const ratio = getContrastRatio(color.hex, nextColor.hex);
                 
-                // NEW LOGIC: 3-Tier System
                 let status = 'fail';
                 let Icon = X;
-                let label = 'Fail';
-
+                
                 if (ratio >= 3) {
                   status = 'pass';
                   Icon = Check;
-                  label = 'Good';
-                } else if (ratio >= 1.6) { // "Decent" threshold
+                } else if (ratio >= 1.6) {
                   status = 'warn';
                   Icon = AlertTriangle;
-                  label = 'Low';
                 }
 
                 return (
-                  <div key={color.id} className="panel-adjacent-item">
-                    <div className="panel-adjacent-swatches">
+                  <div key={color.id} className="panel-adjacent-row">
+                    {/* The Pill Visualizer */}
+                    <div className="panel-adjacent-pill">
                       <div style={{ backgroundColor: color.hex }} />
                       <div style={{ backgroundColor: nextColor.hex }} />
                     </div>
-                    <span className="panel-adjacent-ratio">
-                      {ratio.toFixed(1)}:1
-                    </span>
-                    {/* Updated Badge */}
-                    <div className={`panel-badge ${status}`} title={label}>
-                      <Icon size={12} />
-                      {status === 'warn' && <span style={{marginLeft:4}}>Low</span>}
+                    
+                    {/* Score and Status */}
+                    <div className="panel-adjacent-info">
+                      <span className="adjacent-ratio">{ratio.toFixed(1)}:1</span>
+                      <div className={`adjacent-status ${status}`}>
+                        <Icon size={10} strokeWidth={3} />
+                        <span>{status === 'warn' ? '' : status === 'pass' ? '' : ''}</span>
+                      </div>
                     </div>
                   </div>
                 );
