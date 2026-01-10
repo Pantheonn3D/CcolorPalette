@@ -45,6 +45,7 @@ const MIN_COL_PX = 128;
 const MOBILE_BREAKPOINT = 768;
 const MOBILE_SHADE_COUNT = 6;
 const DESKTOP_SHADE_COUNT = 20;
+const HEADER_OFFSET = 100;
 
 // Helpers
 const generateId = () => Math.random().toString(36).substring(2, 11);
@@ -60,11 +61,21 @@ const isMobileView = () => window.innerWidth <= MOBILE_BREAKPOINT;
 
 const getMaxOpenPanels = () => (isMobileView() ? 1 : 3);
 
-const hexToRgb = (hex) => ({
-  r: parseInt(hex.slice(1, 3), 16),
-  g: parseInt(hex.slice(3, 5), 16),
-  b: parseInt(hex.slice(5, 7), 16),
-});
+// Fixed: Handle both 3 and 6 character hex codes
+const hexToRgb = (hex) => {
+  let cleanHex = hex.replace('#', '');
+  
+  // Expand 3-char hex to 6-char
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex.split('').map(char => char + char).join('');
+  }
+  
+  return {
+    r: parseInt(cleanHex.slice(0, 2), 16),
+    g: parseInt(cleanHex.slice(2, 4), 16),
+    b: parseInt(cleanHex.slice(4, 6), 16),
+  };
+};
 
 const formatContentSections = (content) => {
   if (!content) return [];
@@ -82,10 +93,17 @@ const formatContentSections = (content) => {
   });
 };
 
+// Validate hex string
+const isValidHex = (hex) => {
+  const cleanHex = hex.replace(/[^0-9A-F]/gi, '');
+  return /^([0-9A-F]{3}){1,2}$/i.test(cleanHex);
+};
+
 function ColorGenerator() {
   // Refs
   const containerRef = useRef(null);
   const colorsAreaRef = useRef(null);
+  const removingIdsRef = useRef(new Set()); // Track colors being removed
 
   // Layout State
   const [stackColors, setStackColors] = useState(false);
@@ -106,10 +124,10 @@ function ColorGenerator() {
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  // FIX 1: Create a ref to track the live history index
+  // Ref to track the live history index (avoids stale closure)
   const historyIndexRef = useRef(historyIndex);
 
-  // FIX 2: Keep the ref synced with state
+  // Keep the ref synced with state
   useEffect(() => {
     historyIndexRef.current = historyIndex;
   }, [historyIndex]);
@@ -137,8 +155,9 @@ function ColorGenerator() {
   const [removingId, setRemovingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [activeShadeId, setActiveShadeId] = useState(null);
-  const [editingId, setEditingId] = useState(null); // ID of the color being edited
-  const [editValue, setEditValue] = useState('');   // Temporary value of the input
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [hexError, setHexError] = useState(false); // New: track invalid hex
 
   // Drag State
   const [dragState, setDragState] = useState(null);
@@ -197,16 +216,16 @@ function ColorGenerator() {
   }, [colors, generationMode, constraints, colorBlindMode]);
 
   // History Management
+  // Fixed: Removed historyIndex from deps since we use historyIndexRef
   const updateColors = useCallback(
     (newColors) => {
       setHistory((prev) => {
         const currentIndex = historyIndexRef.current;
         const newHistory = prev.slice(0, currentIndex + 1);
         
-        // NEW: Store as an object so HistoryPanel can see the vision mode
         newHistory.push({
           colors: newColors,
-          visionMode: colorBlindMode // This captures the current state
+          visionMode: colorBlindMode
         });
         
         if (newHistory.length > MAX_HISTORY) {
@@ -220,7 +239,7 @@ function ColorGenerator() {
         return nextIndex >= MAX_HISTORY ? MAX_HISTORY - 1 : nextIndex;
       });
     },
-    [historyIndex, colorBlindMode] // Added colorBlindMode to dependencies
+    [colorBlindMode]
   );
 
   const undo = useCallback(() => {
@@ -254,17 +273,13 @@ function ColorGenerator() {
 
       if (unlockedCount <= 0) return;
 
-      // FIX: Calculate a "seed" from the locked colors
       let generationConstraints = { ...constraints };
       
       if (lockedColors.length > 0) {
-        // Use the first locked color as the anchor for harmony
-        // (You could also average them, but using the first is safer)
         const lockedHsl = hexToHsl(lockedColors[0].hex);
         generationConstraints.baseHue = lockedHsl.h;
       }
 
-      // Pass the updated constraints
       const newPalette = generateRandomPalette(generationMode, unlockedCount, generationConstraints);
       
       const newColors = newPalette.map((hex) => ({
@@ -320,19 +335,27 @@ function ColorGenerator() {
     setTimeout(() => setNewColorId(null), 600);
   };
 
+  // Fixed: Prevent race condition with rapid removals
   const removeColor = (id) => {
-    trackEvent('remove_color', { current_count: colors.length });
     if (colors.length <= 2) return;
-
+    if (removingIdsRef.current.has(id)) return; // Prevent double-removal
+    
+    trackEvent('remove_color', { current_count: colors.length });
+    removingIdsRef.current.add(id);
     setRemovingId(id);
+    
     setTimeout(() => {
       updateColors(colors.filter((c) => c.id !== id));
       setRemovingId(null);
+      removingIdsRef.current.delete(id);
     }, 350);
   };
 
   const toggleLock = (id) => {
-    const isLocking = !colors.find(c => c.id === id).locked;
+    const color = colors.find(c => c.id === id);
+    if (!color) return;
+    
+    const isLocking = !color.locked;
     trackEvent('toggle_lock', { action: isLocking ? 'lock' : 'unlock' });
     updateColors(colors.map((c) => (c.id === id ? { ...c, locked: !c.locked } : c)));
   };
@@ -350,22 +373,22 @@ function ColorGenerator() {
   // --- Hex Editing Handlers ---
 
   const handleHexClick = (id, currentHex, e) => {
-    e.stopPropagation(); // Prevent dragging or other card clicks
+    e.stopPropagation();
     setEditingId(id);
-    setEditValue(currentHex.replace('#', '')); // Show without hash for easier typing
+    setEditValue(currentHex.replace('#', ''));
+    setHexError(false);
   };
 
   const commitHexChange = (id) => {
     if (!editValue) {
       setEditingId(null);
+      setHexError(false);
       return;
     }
 
-    // Validate Hex (allow 3 or 6 chars)
-    const validHexPattern = /^([0-9A-F]{3}){1,2}$/i;
     let cleanHex = editValue.replace(/[^0-9A-F]/gi, '').toUpperCase();
 
-    if (validHexPattern.test(cleanHex)) {
+    if (isValidHex(cleanHex)) {
       // Expand 3-char hex to 6-char
       if (cleanHex.length === 3) {
         cleanHex = cleanHex.split('').map(char => char + char).join('');
@@ -373,16 +396,22 @@ function ColorGenerator() {
       
       const newFullHex = `#${cleanHex}`;
       
-      // Update state: Set new hex AND lock the color
       updateColors(colors.map(c => {
         if (c.id === id) {
-          return { ...c, hex: newFullHex, locked: true }; // Lock it!
+          return { ...c, hex: newFullHex, locked: true };
         }
         return c;
       }));
-    } 
+      
+      setHexError(false);
+    } else {
+      // Show error feedback briefly, then reset
+      setHexError(true);
+      setTimeout(() => {
+        setHexError(false);
+      }, 1000);
+    }
     
-    // Reset editing state
     setEditingId(null);
     setEditValue('');
   };
@@ -392,9 +421,9 @@ function ColorGenerator() {
       e.preventDefault();
       commitHexChange(id);
     } else if (e.key === 'Escape') {
-      // Cancel editing
       setEditingId(null);
       setEditValue('');
+      setHexError(false);
     }
   };
 
@@ -433,138 +462,126 @@ function ColorGenerator() {
     };
   }, [activeShadeId]);
 
-  // Constants - add this new one
-const HEADER_OFFSET = 100; // Height reserved for floating header in stacked mode
+  // Updated getColumnSize function
+  const getColumnSize = useCallback(() => {
+    if (!containerRef.current) return 0;
 
+    const vertical = isVerticalLayout();
+    const isMobile = isMobileView();
 
-// Updated getColumnSize function
-const getColumnSize = useCallback(() => {
-  if (!containerRef.current) return 0;
+    if (vertical) {
+      const colorsArea = colorsAreaRef.current;
+      if (!colorsArea) return 0;
 
-  const vertical = isVerticalLayout();
-  const isMobile = isMobileView();
+      const areaHeight = colorsArea.offsetHeight;
 
-  if (vertical) {
-    const colorsArea = colorsAreaRef.current;
-    if (!colorsArea) return 0;
+      if (stackColors && !isMobile && colors.length > 0) {
+        const effectiveHeight = areaHeight - HEADER_OFFSET;
+        return effectiveHeight / colors.length;
+      }
 
-    const areaHeight = colorsArea.offsetHeight;
+      return areaHeight / colors.length;
+    } else {
+      let panelWidth = 0;
+      if (isMethodOpen) panelWidth += 240;
+      if (isA11yOpen) panelWidth += 280;
+      if (isHistoryOpen) panelWidth += 260;
+      if (isExportOpen) panelWidth += 320;
+      if (isBookmarkOpen) panelWidth += 280;
 
-    // On desktop stacked mode, the first color has extra padding for the header
-    // We need to calculate the "uniform" size for drag calculations
-    if (stackColors && !isMobile && colors.length > 0) {
-      // Subtract the header offset from total height, then divide evenly
-      const effectiveHeight = areaHeight - HEADER_OFFSET;
-      return effectiveHeight / colors.length;
+      const availableWidth = containerRef.current.offsetWidth - panelWidth;
+      return availableWidth / colors.length;
+    }
+  }, [
+    colors.length,
+    isMethodOpen,
+    isA11yOpen,
+    isHistoryOpen,
+    isExportOpen,
+    isBookmarkOpen,
+    isVerticalLayout,
+    stackColors,
+  ]);
+
+  // Updated handleDragStart
+  const handleDragStart = (e, id, index) => {
+    // Only prevent default for touch to allow drag, but not block all touches
+    if (e.type === 'touchstart') {
+      e.preventDefault();
     }
 
-    // Mobile - all colors are uniform
-    return areaHeight / colors.length;
-  } else {
-    // Horizontal mode
-    let panelWidth = 0;
-    if (isMethodOpen) panelWidth += 240;
-    if (isA11yOpen) panelWidth += 280;
-    if (isHistoryOpen) panelWidth += 260;
-    if (isExportOpen) panelWidth += 320;
-    if (isBookmarkOpen) panelWidth += 280;
-
-    const availableWidth = containerRef.current.offsetWidth - panelWidth;
-    return availableWidth / colors.length;
-  }
-}, [
-  colors.length,
-  isMethodOpen,
-  isA11yOpen,
-  isHistoryOpen,
-  isExportOpen,
-  isBookmarkOpen,
-  isVerticalLayout,
-  stackColors,
-]);
-
-// Updated handleDragStart to account for header offset
-const handleDragStart = (e, id, index) => {
-  if (e.type === 'touchstart') e.preventDefault();
-
-  const columnSize = getColumnSize();
-  const vertical = isVerticalLayout();
-  const isMobile = isMobileView();
-
-  let clientPos;
-  if (e.type === 'touchstart') {
-    clientPos = vertical ? e.touches[0].clientY : e.touches[0].clientX;
-  } else {
-    e.preventDefault();
-    clientPos = vertical ? e.clientY : e.clientX;
-  }
-
-  // In desktop stacked mode, adjust startPos to account for header offset
-  // This makes the drag math work correctly
-  let adjustedStartPos = clientPos;
-  if (stackColors && !isMobile && vertical) {
-    // The first color starts after the header offset
-    // Normalize the position as if all colors were uniform from the top
-    const colorsArea = colorsAreaRef.current;
-    if (colorsArea) {
-      const areaRect = colorsArea.getBoundingClientRect();
-      const relativePos = clientPos - areaRect.top - HEADER_OFFSET;
-      adjustedStartPos = areaRect.top + relativePos;
-    }
-  }
-
-  setDragState({
-    id,
-    startIndex: index,
-    currentIndex: index,
-    startPos: adjustedStartPos,
-    currentPos: adjustedStartPos,
-    columnSize,
-    isMobile: vertical,
-    isDesktopStacked: stackColors && !isMobile && vertical,
-    areaTop: colorsAreaRef.current?.getBoundingClientRect().top || 0,
-  });
-};
-
-// Updated handleMouseMove to handle desktop stacked mode correctly
-const handleMouseMove = useCallback(
-  (e) => {
-    if (!dragState || isSnapping) return;
-
-    const { startIndex, columnSize, isMobile, isDesktopStacked, areaTop } = dragState;
+    const columnSize = getColumnSize();
+    const vertical = isVerticalLayout();
+    const isMobile = isMobileView();
 
     let clientPos;
-    if (e.type === 'touchmove') {
-      clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
+    if (e.type === 'touchstart') {
+      clientPos = vertical ? e.touches[0].clientY : e.touches[0].clientX;
     } else {
-      clientPos = isMobile ? e.clientY : e.clientX;
+      e.preventDefault();
+      clientPos = vertical ? e.clientY : e.clientX;
     }
 
-    // Adjust position for desktop stacked mode
-    let adjustedCurrentPos = clientPos;
-    if (isDesktopStacked) {
-      const relativePos = clientPos - areaTop - HEADER_OFFSET;
-      adjustedCurrentPos = areaTop + relativePos;
+    let adjustedStartPos = clientPos;
+    if (stackColors && !isMobile && vertical) {
+      const colorsArea = colorsAreaRef.current;
+      if (colorsArea) {
+        const areaRect = colorsArea.getBoundingClientRect();
+        const relativePos = clientPos - areaRect.top - HEADER_OFFSET;
+        adjustedStartPos = areaRect.top + relativePos;
+      }
     }
 
-    let delta = adjustedCurrentPos - dragState.startPos;
+    setDragState({
+      id,
+      startIndex: index,
+      currentIndex: index,
+      startPos: adjustedStartPos,
+      currentPos: adjustedStartPos,
+      columnSize,
+      isMobile: vertical,
+      isDesktopStacked: stackColors && !isMobile && vertical,
+      areaTop: colorsAreaRef.current?.getBoundingClientRect().top || 0,
+    });
+  };
 
-    // Clamp delta to valid range
-    const maxNegativeOffset = -startIndex * columnSize;
-    const maxPositiveOffset = (colors.length - 1 - startIndex) * columnSize;
-    delta = Math.max(maxNegativeOffset, Math.min(maxPositiveOffset, delta));
+  // Updated handleMouseMove
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!dragState || isSnapping) return;
 
-    const indexOffset = Math.round(delta / columnSize);
-    const newIndex = Math.max(0, Math.min(colors.length - 1, startIndex + indexOffset));
+      const { startIndex, columnSize, isMobile, isDesktopStacked, areaTop } = dragState;
 
-    setDragState((prev) => ({
-      ...prev,
-      currentPos: adjustedCurrentPos,
-      currentIndex: newIndex,
-    }));
-  },
-  [dragState, isSnapping, colors.length]
-);
+      let clientPos;
+      if (e.type === 'touchmove') {
+        clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
+      } else {
+        clientPos = isMobile ? e.clientY : e.clientX;
+      }
+
+      let adjustedCurrentPos = clientPos;
+      if (isDesktopStacked) {
+        const relativePos = clientPos - areaTop - HEADER_OFFSET;
+        adjustedCurrentPos = areaTop + relativePos;
+      }
+
+      let delta = adjustedCurrentPos - dragState.startPos;
+
+      const maxNegativeOffset = -startIndex * columnSize;
+      const maxPositiveOffset = (colors.length - 1 - startIndex) * columnSize;
+      delta = Math.max(maxNegativeOffset, Math.min(maxPositiveOffset, delta));
+
+      const indexOffset = Math.round(delta / columnSize);
+      const newIndex = Math.max(0, Math.min(colors.length - 1, startIndex + indexOffset));
+
+      setDragState((prev) => ({
+        ...prev,
+        currentPos: adjustedCurrentPos,
+        currentIndex: newIndex,
+      }));
+    },
+    [dragState, isSnapping, colors.length]
+  );
 
   const handleMouseUp = useCallback(() => {
     if (!dragState) return;
@@ -615,81 +632,78 @@ const handleMouseMove = useCallback(
     };
   }, [dragState, handleMouseMove, handleMouseUp]);
 
-// Updated getColumnStyle to handle desktop stacked mode
-const getColumnStyle = (index, id) => {
-  if (!dragState) return {};
+  // Updated getColumnStyle
+  const getColumnStyle = (index, id) => {
+    if (!dragState) return {};
 
-  const { startIndex, currentIndex, startPos, currentPos, columnSize, isMobile, isDesktopStacked } =
-    dragState;
-  const isDragged = id === dragState.id;
-  const transformProp = isMobile ? 'translateY' : 'translateX';
+    const { startIndex, currentIndex, startPos, currentPos, columnSize, isMobile } =
+      dragState;
+    const isDragged = id === dragState.id;
+    const transformProp = isMobile ? 'translateY' : 'translateX';
 
-  if (isDragged) {
-    if (isSnapping) {
-      const snapOffset = (currentIndex - startIndex) * columnSize;
+    if (isDragged) {
+      if (isSnapping) {
+        const snapOffset = (currentIndex - startIndex) * columnSize;
+        return {
+          transform: `${transformProp}(${snapOffset}px)`,
+          zIndex: 100,
+          transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        };
+      }
+
+      const offset = currentPos - startPos;
       return {
-        transform: `${transformProp}(${snapOffset}px)`,
+        transform: `${transformProp}(${offset}px)`,
         zIndex: 100,
-        transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        transition: 'none',
       };
     }
 
-    const offset = currentPos - startPos;
-    return {
-      transform: `${transformProp}(${offset}px)`,
-      zIndex: 100,
-      transition: 'none',
-    };
-  }
-
-  // Calculate shift for non-dragged items
-  let shift = 0;
-  if (startIndex < currentIndex && index > startIndex && index <= currentIndex) {
-    shift = -1;
-  }
-  if (startIndex > currentIndex && index >= currentIndex && index < startIndex) {
-    shift = 1;
-  }
-
-  return {
-    transform: shift !== 0 ? `${transformProp}(${shift * columnSize}px)` : `${transformProp}(0)`,
-    transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-  };
-};
-
-// Updated layout detection - ensure mobile always works correctly
-useEffect(() => {
-  const el = colorsAreaRef.current;
-  if (!el) return;
-
-  const update = () => {
-    // On mobile, don't use stackColors - CSS handles the layout
-    // stackColors is ONLY for desktop narrow-width scenarios
-    if (isMobileView()) {
-      setStackColors(false);
-      return;
+    let shift = 0;
+    if (startIndex < currentIndex && index > startIndex && index <= currentIndex) {
+      shift = -1;
+    }
+    if (startIndex > currentIndex && index >= currentIndex && index < startIndex) {
+      shift = 1;
     }
 
-    const w = el.getBoundingClientRect().width;
-    const perCol = w / Math.max(1, colors.length);
-    setStackColors(perCol < MIN_COL_PX);
+    return {
+      transform: shift !== 0 ? `${transformProp}(${shift * columnSize}px)` : `${transformProp}(0)`,
+      transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    };
   };
 
-  update();
+  // Layout detection
+  useEffect(() => {
+    const el = colorsAreaRef.current;
+    if (!el) return;
 
-  let ro;
-  if (typeof ResizeObserver !== 'undefined') {
-    ro = new ResizeObserver(update);
-    ro.observe(el);
-  } else {
-    window.addEventListener('resize', update);
-  }
+    const update = () => {
+      if (isMobileView()) {
+        setStackColors(false);
+        return;
+      }
 
-  return () => {
-    if (ro) ro.disconnect();
-    else window.removeEventListener('resize', update);
-  };
-}, [colors.length]);
+      const w = el.getBoundingClientRect().width;
+      const perCol = w / Math.max(1, colors.length);
+      setStackColors(perCol < MIN_COL_PX);
+    };
+
+    update();
+
+    let ro;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(update);
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', update);
+    }
+
+    return () => {
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', update);
+    };
+  }, [colors.length]);
 
   // URL Parsing on Mount
   useEffect(() => {
@@ -726,7 +740,7 @@ useEffect(() => {
             hex,
             locked: false,
           }));
-          setHistory([initialColors]);
+          setHistory([{ colors: initialColors, visionMode: 'normal' }]);
           setHistoryIndex(0);
         }
       }
@@ -741,7 +755,8 @@ useEffect(() => {
       if (['auto', 'mono', 'analogous', 'complementary', 'splitComplementary', 'triadic'].includes(mode)) {
         setGenerationMode(mode);
       }
-      if (['any', 'muted', 'pastel', 'vibrant', 'dark'].includes(mood)) {
+      // Fixed: Added 'light' to valid moods
+      if (['any', 'muted', 'pastel', 'vibrant', 'dark', 'light'].includes(mood)) {
         setConstraints((prev) => ({ ...prev, mood }));
       }
       if (!isNaN(contrast) && contrast >= 1 && contrast <= 4.5) {
@@ -773,7 +788,7 @@ useEffect(() => {
     window.history.replaceState({}, '', `/${hexes}${queryString ? '?' + queryString : ''}`);
   }, [colors, generationMode, constraints, colorBlindMode]);
 
-  // Expose API
+  // Expose API - Fixed: Added cleanup
   useEffect(() => {
     window.chromaAPI = {
       undo,
@@ -782,11 +797,18 @@ useEffect(() => {
       canRedo: () => canRedo,
       getShareUrl,
     };
+    
+    return () => {
+      delete window.chromaAPI;
+    };
   }, [undo, redo, canUndo, canRedo, getShareUrl]);
 
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't trigger shortcuts when editing hex
+      if (editingId) return;
+      
       if (e.code === 'Space') {
         if (document.activeElement instanceof HTMLButtonElement) {
           document.activeElement.blur();
@@ -811,7 +833,7 @@ useEffect(() => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, colors.length, generatePalette]);
+  }, [undo, redo, colors.length, generatePalette, editingId]);
 
   // Color Display
   const getDisplayColor = (hex) => {
@@ -831,13 +853,33 @@ useEffect(() => {
     const hexPath = colors.map(c => c.hex.replace('#', '')).join('-');
     return `${window.location.origin}/${hexPath}`;
   }, [colors]);
+  
   const contentSections = useMemo(() => formatContentSections(seoData.content), [seoData.content]);
 
   const ogImageUrl = useMemo(() => {
-    if (typeof window === 'undefined') return 'https://ccolorpalette.com/og-image.png'; // Fallback
+    if (typeof window === 'undefined') return 'https://ccolorpalette.com/og-image.png';
     const hexPath = colors.map(c => c.hex.replace('#', '')).join('-');
-    // Point to the Netlify function
     return `${window.location.origin}/.netlify/functions/og-image?colors=${hexPath}`;
+  }, [colors]);
+
+  // Fixed: Memoize related palettes to avoid regenerating on every render
+  const relatedPalettes = useMemo(() => {
+    if (colors.length === 0) return [];
+    
+    const baseHsl = hexToHsl(colors[0].hex);
+    
+    return Array.from({ length: 6 }).map((_, i) => {
+      // Use baseHue from current palette's first color, with slight rotation for variety
+      const hueOffset = i * 30; // Rotate hue for each related palette
+      const palette = generateRandomPalette('analogous', 5, { 
+        baseHue: (baseHsl.h + hueOffset) % 360 
+      });
+      
+      return {
+        hexes: palette.map((h) => h.replace('#', '')),
+        index: i,
+      };
+    });
   }, [colors]);
 
   const structuredData = useMemo(() => {
@@ -921,7 +963,11 @@ useEffect(() => {
         <main className="generator-container" ref={containerRef}>
           {/* Mobile Header */}
           <div className="mobile-header">
-            <button className="mobile-hint" onClick={() => generatePalette(colors.length)}>
+            <button 
+              className="mobile-hint" 
+              onClick={() => generatePalette(colors.length)}
+              aria-label="Generate new palette"
+            >
               Tap to generate
             </button>
 
@@ -930,6 +976,7 @@ useEffect(() => {
                 className={`mobile-icon-btn ${!canUndo ? 'disabled' : ''}`}
                 onClick={undo}
                 disabled={!canUndo}
+                aria-label="Undo"
               >
                 <Undo2 size={18} />
               </button>
@@ -937,6 +984,7 @@ useEffect(() => {
                 className={`mobile-icon-btn ${!canRedo ? 'disabled' : ''}`}
                 onClick={redo}
                 disabled={!canRedo}
+                aria-label="Redo"
               >
                 <Redo2 size={18} />
               </button>
@@ -946,24 +994,32 @@ useEffect(() => {
               <button
                 className={`mobile-icon-btn ${isMethodOpen ? 'active' : ''}`}
                 onClick={() => togglePanel('method')}
+                aria-label="Generation method"
+                aria-pressed={isMethodOpen}
               >
                 <Sparkles size={18} />
               </button>
               <button
                 className={`mobile-icon-btn ${isA11yOpen ? 'active' : ''}`}
                 onClick={() => togglePanel('a11y')}
+                aria-label="Accessibility options"
+                aria-pressed={isA11yOpen}
               >
                 <Eye size={18} />
               </button>
               <button
                 className={`mobile-icon-btn ${isHistoryOpen ? 'active' : ''}`}
                 onClick={() => togglePanel('history')}
+                aria-label="Palette history"
+                aria-pressed={isHistoryOpen}
               >
                 <Clock size={18} />
               </button>
               <button
                 className={`mobile-icon-btn ${isExportOpen ? 'active' : ''}`}
                 onClick={() => togglePanel('export')}
+                aria-label="Export palette"
+                aria-pressed={isExportOpen}
               >
                 <Upload size={18} />
               </button>
@@ -974,6 +1030,8 @@ useEffect(() => {
           <section
             ref={colorsAreaRef}
             className={`colors-area ${stackColors ? 'stacked' : ''}`}
+            role="region"
+            aria-label="Color palette"
           >
             {colors.map((color, index) => {
               const displayHex = getDisplayColor(color.hex);
@@ -984,12 +1042,15 @@ useEffect(() => {
               const isDragging = dragState?.id === color.id;
               const isShadePicking = activeShadeId === color.id;
               const columnStyle = getColumnStyle(index, color.id);
+              const isEditing = editingId === color.id;
 
               return (
                 <React.Fragment key={color.id}>
                   <div
                     className={`color-column ${isNew ? 'color-entering' : ''} ${isRemoving ? 'color-removing' : ''} ${isDragging ? 'is-dragging' : ''} ${dragState && !isDragging ? 'is-shifting' : ''}`}
                     style={{ backgroundColor: displayHex, ...columnStyle }}
+                    role="article"
+                    aria-label={`Color ${color.hex}`}
                   >
                     {isShadePicking ? (
                       <div className="shade-container" onMouseLeave={handleMouseLeave}>
@@ -1004,6 +1065,7 @@ useEffect(() => {
                                 pickShade(color.id, shadeHex);
                               }}
                               title={shadeHex}
+                              aria-label={`Select shade ${shadeHex}`}
                             />
                           )
                         )}
@@ -1013,6 +1075,7 @@ useEffect(() => {
                             e.stopPropagation();
                             toggleShadePicker(null);
                           }}
+                          aria-label="Close shade picker"
                         >
                           <X size={20} />
                         </button>
@@ -1029,6 +1092,7 @@ useEffect(() => {
                                 e.currentTarget.blur();
                               }}
                               title="Remove"
+                              aria-label="Remove color"
                               style={{ color: textColor }}
                             >
                               <X size={20} />
@@ -1043,6 +1107,7 @@ useEffect(() => {
                               e.currentTarget.blur();
                             }}
                             title="Copy hex"
+                            aria-label={isCopied ? 'Copied' : 'Copy hex code'}
                             style={{ color: textColor }}
                           >
                             {isCopied ? <Check size={20} /> : <Copy size={20} />}
@@ -1056,6 +1121,8 @@ useEffect(() => {
                               e.currentTarget.blur();
                             }}
                             title={color.locked ? 'Unlock' : 'Lock'}
+                            aria-label={color.locked ? 'Unlock color' : 'Lock color'}
+                            aria-pressed={color.locked}
                             style={{ color: textColor }}
                           >
                             {color.locked ? <Lock size={20} /> : <Unlock size={20} />}
@@ -1064,6 +1131,8 @@ useEffect(() => {
                           <button
                             className={`toolbar-btn ${isShadePicking ? 'active' : ''}`}
                             title="Adjust shade"
+                            aria-label="Open shade picker"
+                            aria-pressed={isShadePicking}
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleShadePicker(color.id);
@@ -1077,35 +1146,45 @@ useEffect(() => {
                           <div
                             className="toolbar-btn drag-handle"
                             title="Drag to reorder"
+                            aria-label="Drag to reorder"
+                            role="button"
+                            tabIndex={0}
                             style={{ color: textColor }}
                             onMouseDown={(e) => handleDragStart(e, color.id, index)}
                             onTouchStart={(e) => handleDragStart(e, color.id, index)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                // Could implement keyboard reordering here
+                              }
+                            }}
                           >
                             <DragIcon size={20} />
                           </div>
                         </div>
 
                         <div className="color-content">
-                          {editingId === color.id ? (
-                            <div className="hex-input-wrapper">
-                                <input
-                                  autoFocus
-                                  className="hex-input"
-                                  style={{ color: textColor }}
-                                  value={editValue}
-                                  onChange={(e) => {
-                                    // 1. Strip the '#' and any non-hex characters immediately
-                                    let val = e.target.value.replace(/[^0-9A-F]/gi, '').toUpperCase();
-                                    
-                                    // 2. Limit to 6 characters so it doesn't overflow
-                                    if (val.length > 6) val = val.slice(0, 6);
-                                    
-                                    setEditValue(val);
-                                  }}
-                                  onBlur={() => commitHexChange(color.id)}
-                                  onKeyDown={(e) => handleHexKeyDown(e, color.id)}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
+                          {isEditing ? (
+                            <div className={`hex-input-wrapper ${hexError ? 'error' : ''}`}>
+                              <span className="hex-prefix" style={{ color: textColor }}>#</span>
+                              <input
+                                autoFocus
+                                className="hex-input"
+                                style={{ color: textColor }}
+                                value={editValue}
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/[^0-9A-F]/gi, '').toUpperCase();
+                                  if (val.length > 6) val = val.slice(0, 6);
+                                  setEditValue(val);
+                                  setHexError(false);
+                                }}
+                                onBlur={() => commitHexChange(color.id)}
+                                onKeyDown={(e) => handleHexKeyDown(e, color.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                maxLength={6}
+                                placeholder="000000"
+                                aria-label="Edit hex color"
+                                aria-invalid={hexError}
+                              />
                             </div>
                           ) : (
                             <h2
@@ -1113,6 +1192,13 @@ useEffect(() => {
                               style={{ color: textColor }}
                               onClick={(e) => handleHexClick(color.id, color.hex, e)}
                               title="Click to edit"
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  handleHexClick(color.id, color.hex, e);
+                                }
+                              }}
                             >
                               {isCopied ? 'Copied!' : color.hex.replace('#', '')}
                             </h2>
@@ -1120,7 +1206,7 @@ useEffect(() => {
                         </div>
 
                         {color.locked && (
-                          <div className="lock-indicator" style={{ color: textColor }}>
+                          <div className="lock-indicator" style={{ color: textColor }} aria-hidden="true">
                             <Lock size={16} />
                           </div>
                         )}
@@ -1136,7 +1222,7 @@ useEffect(() => {
                           addColorAtIndex(index);
                           e.currentTarget.blur();
                         }}
-                        aria-label="Add color"
+                        aria-label={`Add color between ${colors[index].hex} and ${colors[index + 1].hex}`}
                       >
                         <Plus size={24} strokeWidth={2.5} color="#161616" />
                       </button>
@@ -1207,27 +1293,17 @@ useEffect(() => {
             </div>
           )}
 
-          
+          {/* Fixed: Use memoized related palettes */}
           <div className="seo-related-links">
             <h3 className="seo-section-title">Explore Related Palettes</h3>
             <div>
-              {Array.from({ length: 6 }).map((_, i) => {
-                // NEW: Use the first color of the CURRENT palette as a "seed"
-                // This ensures this page always suggests similar "vibe" palettes
-                const baseHex = colors[0].hex; 
-                const randomHexes = generateRandomPalette('analogous', 5, { seed: baseHex + i })
-                  .map((h) => h.replace('#', ''));
-                  
-                return (
-                  <a key={i} href={`/${randomHexes.join('-')}`}>
-                    {/* Use the traits to give the link a better name for SEO */}
-                    Similar {seoData.traits?.temperature || 'Modern'} Palette {i + 1}
-                  </a>
-                );
-              })}
+              {relatedPalettes.map((palette) => (
+                <a key={palette.index} href={`/${palette.hexes.join('-')}`}>
+                  Similar {seoData.traits?.temperature || 'Modern'} Palette {palette.index + 1}
+                </a>
+              ))}
             </div>
           </div>
-          
 
           <div className="seo-color-reference">
             <h2 className="seo-section-title">Color Values</h2>
@@ -1273,6 +1349,6 @@ useEffect(() => {
       </footer>
     </div>
   );
-}
+} 
 
 export default ColorGenerator;

@@ -105,6 +105,26 @@ const oklchToOklab = (L, C, h) => {
   };
 };
 
+const hexToOklab = (hex) => {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const lr = srgbToLinear(r);
+  const lg = srgbToLinear(g);
+  const lb = srgbToLinear(b);
+
+  return linearRgbToOklab(lr, lg, lb);
+};
+
+// Single unified deltaE function for OKLab
+const deltaEOK = (lab1, lab2) => {
+  const dL = lab1.L - lab2.L;
+  const da = lab1.a - lab2.a;
+  const db = lab1.b - lab2.b;
+  return Math.sqrt(dL * dL + da * da + db * db);
+};
+
 export const hexToOklch = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -125,29 +145,46 @@ const isInGamut = (r, g, b) => {
          b >= -epsilon && b <= 1 + epsilon;
 };
 
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+const clipLinearRgb01 = (rgb) => ({
+  r: clamp01(rgb.r),
+  g: clamp01(rgb.g),
+  b: clamp01(rgb.b),
+});
+
+// Gamut mapping: binary search chroma, plus "clip if already within JND"
 const gamutMapOklch = (L, C, h) => {
   if (C === 0) return { L, C, h };
-  
-  const lab = oklchToOklab(L, C, h);
-  const rgb = oklabToLinearRgb(lab.L, lab.a, lab.b);
 
-  if (isInGamut(rgb.r, rgb.g, rgb.b)) {
-    return { L, C, h };
-  }
+  const initialLab = oklchToOklab(L, C, h);
+  const initialRgb = oklabToLinearRgb(initialLab.L, initialLab.a, initialLab.b);
+  if (isInGamut(initialRgb.r, initialRgb.g, initialRgb.b)) return { L, C, h };
+
+  const JND = 0.02;
 
   let lo = 0;
   let hi = C;
 
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2;
-    const testLab = oklchToOklab(L, mid, h);
-    const testRgb = oklabToLinearRgb(testLab.L, testLab.a, testLab.b);
 
-    if (isInGamut(testRgb.r, testRgb.g, testRgb.b)) {
+    const lab = oklchToOklab(L, mid, h);
+    const rgb = oklabToLinearRgb(lab.L, lab.a, lab.b);
+
+    if (isInGamut(rgb.r, rgb.g, rgb.b)) {
       lo = mid;
-    } else {
-      hi = mid;
+      continue;
     }
+
+    // Local clip check: if clipping is below JND, accept it
+    const clippedRgb = clipLinearRgb01(rgb);
+    const clippedLab = linearRgbToOklab(clippedRgb.r, clippedRgb.g, clippedRgb.b);
+    if (deltaEOK(lab, clippedLab) < JND) {
+      return oklabToOklch(clippedLab.L, clippedLab.a, clippedLab.b);
+    }
+
+    hi = mid;
   }
 
   return { L, C: lo, h };
@@ -159,9 +196,9 @@ export const oklchToHex = (L, C, h) => {
   const lab = oklchToOklab(mapped.L, mapped.C, mapped.h);
   const rgb = oklabToLinearRgb(lab.L, lab.a, lab.b);
 
-  const r = Math.round(Math.max(0, Math.min(255, linearToSrgb(rgb.r) * 255)));
-  const g = Math.round(Math.max(0, Math.min(255, linearToSrgb(rgb.g) * 255)));
-  const b = Math.round(Math.max(0, Math.min(255, linearToSrgb(rgb.b) * 255)));
+  const r = Math.round(clamp01(linearToSrgb(clamp01(rgb.r))) * 255);
+  const g = Math.round(clamp01(linearToSrgb(clamp01(rgb.g))) * 255);
+  const b = Math.round(clamp01(linearToSrgb(clamp01(rgb.b))) * 255);
 
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`.toUpperCase();
 };
@@ -169,35 +206,133 @@ export const oklchToHex = (L, C, h) => {
 const random = (min, max, rng) => rng() * (max - min) + min;
 
 // ============================================
-// 2. OKLCH VIBRANCY & HARMONY LOGIC
+// 2. GAMUT-AWARE CHROMA UTILITIES
 // ============================================
 
+// Memoization cache for findMaxChroma
+const maxChromaCache = new Map();
+const MAX_CHROMA_CACHE_SIZE = 5000;
+
+// Find maximum in-gamut chroma for a given L and h (with memoization)
+// FIX 1 & 3: Normalize hue to 0-359, and use quantized values for computation
+const findMaxChroma = (L, h, precision = 0.001) => {
+  // Quantize L to 0.001 and h to 1 degree for cache key
+  const quantizedL = Math.round(L * 1000) / 1000;
+  // FIX 1: Normalize hue to 0-359 range (360 becomes 0)
+  let quantizedH = Math.round(h) % 360;
+  if (quantizedH < 0) quantizedH += 360;
+  
+  const cacheKey = `${quantizedL}-${quantizedH}`;
+  
+  // Check cache
+  if (maxChromaCache.has(cacheKey)) {
+    return maxChromaCache.get(cacheKey);
+  }
+  
+  // FIX 3: Use quantized values for computation to ensure cache consistency
+  const computeL = quantizedL;
+  const computeH = quantizedH;
+  
+  let lo = 0;
+  let hi = 0.4;
+  
+  while (hi - lo > precision) {
+    const mid = (lo + hi) / 2;
+    const lab = oklchToOklab(computeL, mid, computeH);
+    const rgb = oklabToLinearRgb(lab.L, lab.a, lab.b);
+    
+    if (isInGamut(rgb.r, rgb.g, rgb.b)) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  
+  // Cache management: clear if too large
+  if (maxChromaCache.size >= MAX_CHROMA_CACHE_SIZE) {
+    const keysToDelete = Array.from(maxChromaCache.keys()).slice(0, MAX_CHROMA_CACHE_SIZE / 2);
+    keysToDelete.forEach(key => maxChromaCache.delete(key));
+  }
+  
+  maxChromaCache.set(cacheKey, lo);
+  return lo;
+};
+
+// ============================================
+// 3. IMPROVED VIBRANCY & HARMONY LOGIC
+// ============================================
+
+// Hue-specific adjustments for perceptually pleasing colors
+const getHueAdjustments = (h) => {
+  // Normalize hue
+  const hue = ((h % 360) + 360) % 360;
+  
+  // Different hue regions have different optimal L/C relationships
+  if (hue >= 80 && hue <= 115) {
+    // Yellow-green: needs higher lightness to look good
+    return { minL: 0.55, maxL: 0.92, chromaBoost: 1.0 };
+  } else if (hue >= 55 && hue < 80) {
+    // Yellow: needs high lightness, can handle high chroma
+    return { minL: 0.65, maxL: 0.95, chromaBoost: 1.1 };
+  } else if (hue >= 200 && hue <= 270) {
+    // Blue-purple: can go darker, rich at lower lightness
+    return { minL: 0.25, maxL: 0.75, chromaBoost: 1.0 };
+  } else if (hue >= 150 && hue < 200) {
+    // Cyan-teal: limited chroma, be conservative
+    return { minL: 0.35, maxL: 0.80, chromaBoost: 0.85 };
+  } else if (hue >= 0 && hue < 30 || hue >= 330) {
+    // Red: versatile, can be vibrant across many lightness levels
+    return { minL: 0.30, maxL: 0.75, chromaBoost: 1.0 };
+  } else if (hue >= 270 && hue < 330) {
+    // Magenta-pink: can be vibrant, works at various lightness
+    return { minL: 0.35, maxL: 0.85, chromaBoost: 1.05 };
+  }
+  
+  // Default for orange, green, etc.
+  return { minL: 0.35, maxL: 0.85, chromaBoost: 1.0 };
+};
+
+// chromaBoost is applied HERE only (removed from generateCohesiveVariationsOklch)
 const adjustForVibrancyOklch = (L, C, h) => {
-  let newL = L;
-  let newC = C;
-  let newH = h;
-
-  // OKLCH is perceptually uniform, so fewer hue-specific fixes needed
-  // Slight boost for yellow-green region which can handle more chroma
-  if (h > 110 && h < 160) {
-    newC = Math.min(newC * 1.1, 0.32);
-  }
-
-  // Blues at high lightness can look washed out
-  if (h > 250 && h < 290 && newL > 0.75) {
-    newC = Math.max(newC, 0.08);
-  }
-
+  const hueAdj = getHueAdjustments(h);
+  
+  // Clamp L to hue-appropriate range
+  let newL = Math.max(hueAdj.minL, Math.min(hueAdj.maxL, L));
+  
+  // Find maximum achievable chroma at this L and h
+  const maxC = findMaxChroma(newL, h);
+  
+  // Apply chroma boost for certain hues, but stay within gamut
+  let targetC = C * hueAdj.chromaBoost;
+  
+  // Keep 8% headroom from gamut edge for smoother colors
+  let newC = Math.min(targetC, maxC * 0.92);
+  
   // Ensure minimum chroma for chromatic colors
   if (C > 0.01) {
-    newC = Math.max(newC, 0.025);
+    newC = Math.max(newC, 0.015);
   }
-
-  // Cap extremes
-  newC = Math.max(0, Math.min(0.37, newC));
-  newL = Math.max(0.07, Math.min(0.97, newL));
-
-  return { L: newL, C: newC, h: newH };
+  
+  // Special handling for problematic regions
+  
+  // Deep blues at high lightness look washed out
+  if (h > 230 && h < 280 && newL > 0.78) {
+    newL = 0.78;
+    newC = Math.min(newC, findMaxChroma(newL, h) * 0.9);
+  }
+  
+  // Yellows at low lightness look muddy
+  if (h > 70 && h < 110 && newL < 0.55) {
+    newL = 0.55;
+    newC = Math.min(newC, findMaxChroma(newL, h) * 0.9);
+  }
+  
+  // Cyans have very limited gamut - be extra conservative
+  if (h > 170 && h < 200) {
+    newC = Math.min(newC, maxC * 0.85);
+  }
+  
+  return { L: newL, C: newC, h };
 };
 
 const generateHarmoniousHues = (mode, count, constraints, rng) => {
@@ -206,122 +341,301 @@ const generateHarmoniousHues = (mode, count, constraints, rng) => {
   if (constraints && typeof constraints.baseHue === 'number') {
     base = constraints.baseHue;
   } else {
-    base = random(0, 360, rng);
+    // Bias slightly toward "golden" hues that photograph well
+    const goldenHues = [15, 35, 55, 145, 210, 265, 320];
+    if (rng() < 0.4) {
+      base = goldenHues[Math.floor(rng() * goldenHues.length)] + random(-15, 15, rng);
+    } else {
+      base = random(0, 360, rng);
+    }
   }
 
   const hues = [];
-  const jitter = (amount = 15) => random(-amount, amount, rng);
+  
+  // Refined jitter function
+  const jitter = (amount = 15) => {
+    return random(-amount, amount, rng);
+  };
+  
+  // Avoid hue dead zones (muddy transitions)
+  const avoidDeadZones = (hue) => {
+    const normalized = ((hue % 360) + 360) % 360;
+    // Slight adjustments to avoid muddy yellow-green transition zone
+    if (normalized > 68 && normalized < 78) {
+      return normalized < 73 ? 65 : 80;
+    }
+    return normalized;
+  };
 
   switch (mode) {
     case 'mono':
-      for (let i = 0; i < count; i++) hues.push((base + jitter(5) + 360) % 360);
+      // Monochromatic with subtle hue shifts for visual interest
+      for (let i = 0; i < count; i++) {
+        const shift = ((i / Math.max(1, count - 1)) - 0.5) * 8;
+        hues.push(avoidDeadZones((base + shift + 360) % 360));
+      }
       break;
+      
     case 'analogous':
-      const range = 50;
+      // Tighter analogous range for more cohesive palettes
+      const range = Math.min(45, 25 + count * 4);
       for (let i = 0; i < count; i++) {
         const progress = count > 1 ? i / (count - 1) : 0.5;
         const offset = progress * range - (range / 2);
-        hues.push((base + offset + jitter(8) + 360) % 360);
+        hues.push(avoidDeadZones((base + offset + jitter(5) + 360) % 360));
       }
       break;
+      
     case 'complementary':
+      // Distribute colors between two complementary anchors
+      const compOffset = 180 + random(-10, 10, rng);
       for (let i = 0; i < count; i++) {
-        if (i < Math.ceil(count / 2)) hues.push((base + jitter(15) + 360) % 360);
-        else hues.push((base + 180 + jitter(15) + 360) % 360);
+        if (i < Math.ceil(count / 2)) {
+          hues.push(avoidDeadZones((base + jitter(12) + 360) % 360));
+        } else {
+          hues.push(avoidDeadZones((base + compOffset + jitter(12) + 360) % 360));
+        }
       }
       break;
+      
     case 'splitComplementary':
-    case 'triadic':
-      const anchors = mode === 'triadic' ? [0, 120, 240] : [0, 150, 210];
+      // Simplified anchors array
+      const splitAngle = 150 + random(-5, 5, rng);
+      const splitAnchors = [0, splitAngle, 360 - splitAngle];
       for (let i = 0; i < count; i++) {
-        const anchor = anchors[i % anchors.length];
-        hues.push((base + anchor + jitter(10) + 360) % 360);
+        const anchor = splitAnchors[i % splitAnchors.length];
+        hues.push(avoidDeadZones((base + anchor + jitter(8) + 360) % 360));
       }
       break;
+      
+    case 'triadic':
+      // True triadic with slight organic variation
+      const triadicAnchors = [0, 120 + random(-5, 5, rng), 240 + random(-5, 5, rng)];
+      for (let i = 0; i < count; i++) {
+        const anchor = triadicAnchors[i % triadicAnchors.length];
+        hues.push(avoidDeadZones((base + anchor + jitter(7) + 360) % 360));
+      }
+      break;
+      
+    case 'tetradic':
+      // Four colors in rectangle pattern
+      const tetAnchors = [0, 90, 180, 270];
+      for (let i = 0; i < count; i++) {
+        const anchor = tetAnchors[i % tetAnchors.length];
+        hues.push(avoidDeadZones((base + anchor + jitter(10) + 360) % 360));
+      }
+      break;
+      
     default:
-      for (let i = 0; i < count; i++) hues.push((base + (i * 30) + 360) % 360);
+      for (let i = 0; i < count; i++) {
+        hues.push(avoidDeadZones((base + (i * 30) + 360) % 360));
+      }
   }
+  
   return hues;
 };
 
+// FIX 2: Removed chromaBoost multiplication - it's now only applied in adjustForVibrancyOklch
 const generateCohesiveVariationsOklch = (hues, mood, count, rng) => {
   const result = [];
-  const strategy = rng();
-
-  for (let i = 0; i < count; i++) {
-    const t = count > 1 ? i / (count - 1) : 0.5;
-    let C, L;
-
-    if (mood === 'pastel') {
-      C = random(0.04, 0.09, rng);
-      L = random(0.85, 0.94, rng);
-    } else if (mood === 'vibrant') {
-      C = random(0.14, 0.36, rng);
-      L = random(0.50, 0.82, rng);
-    } else if (mood === 'muted') {
-      C = random(0.02, 0.06, rng);
-      L = random(0.40, 0.70, rng);
-    } else if (mood === 'dark') {
-      C = random(0.06, 0.16, rng);
-      L = random(0.18, 0.38, rng);
-    } else {
-      C = 0.07 + (Math.sin(t * Math.PI) * 0.07) + random(-0.02, 0.02, rng);
-
-      if (strategy < 0.40) {
-        L = 0.22 + (t * 0.62) + random(-0.05, 0.05, rng);
-      } else if (strategy < 0.80) {
-        L = 0.84 - (t * 0.62) + random(-0.05, 0.05, rng);
+  
+  // Determine base strategy
+  const useLightnessProgression = rng() < 0.7;
+  const progressionDirection = rng() < 0.5 ? 'ascending' : 'descending';
+  
+  // Calculate target chroma consistency
+  let targetChromaRatio;
+  let lightnessRange;
+  
+  switch (mood) {
+    case 'pastel':
+      targetChromaRatio = { min: 0.25, max: 0.45 };
+      lightnessRange = { min: 0.82, max: 0.94 };
+      break;
+    case 'vibrant':
+      targetChromaRatio = { min: 0.70, max: 0.90 };
+      lightnessRange = { min: 0.45, max: 0.78 };
+      break;
+    case 'muted':
+      targetChromaRatio = { min: 0.15, max: 0.35 };
+      lightnessRange = { min: 0.40, max: 0.70 };
+      break;
+    case 'dark':
+      targetChromaRatio = { min: 0.35, max: 0.65 };
+      lightnessRange = { min: 0.15, max: 0.40 };
+      break;
+    case 'light':
+      targetChromaRatio = { min: 0.30, max: 0.55 };
+      lightnessRange = { min: 0.75, max: 0.92 };
+      break;
+    default: // 'any' or balanced
+      targetChromaRatio = { min: 0.40, max: 0.70 };
+      lightnessRange = { min: 0.30, max: 0.85 };
+  }
+  
+  // Generate base lightness values with good distribution
+  const lightnessValues = [];
+  
+  if (useLightnessProgression && count >= 3) {
+    for (let i = 0; i < count; i++) {
+      const t = count > 1 ? i / (count - 1) : 0.5;
+      const eased = t * t * (3 - 2 * t); // Smoothstep
+      
+      let L;
+      if (progressionDirection === 'ascending') {
+        L = lightnessRange.min + eased * (lightnessRange.max - lightnessRange.min);
       } else {
-        if (i === 0) L = random(0.20, 0.35, rng);
-        else if (i === count - 1) L = random(0.78, 0.92, rng);
-        else L = random(0.38, 0.72, rng);
+        L = lightnessRange.max - eased * (lightnessRange.max - lightnessRange.min);
       }
+      
+      L += random(-0.03, 0.03, rng);
+      lightnessValues.push(Math.max(lightnessRange.min, Math.min(lightnessRange.max, L)));
     }
-
+  } else {
+    const segments = count;
+    const segmentSize = (lightnessRange.max - lightnessRange.min) / segments;
+    
+    for (let i = 0; i < count; i++) {
+      const segmentStart = lightnessRange.min + i * segmentSize;
+      const L = segmentStart + random(0.02, segmentSize - 0.02, rng);
+      lightnessValues.push(Math.max(lightnessRange.min, Math.min(lightnessRange.max, L)));
+    }
+    
+    // Shuffle for variety
+    for (let i = lightnessValues.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [lightnessValues[i], lightnessValues[j]] = [lightnessValues[j], lightnessValues[i]];
+    }
+  }
+  
+  // Generate chroma values based on each hue's gamut and target ratio
+  for (let i = 0; i < count; i++) {
+    const h = hues[i];
+    let L = lightnessValues[i];
+    
+    // Apply hue-specific lightness constraints
+    const hueAdj = getHueAdjustments(h);
+    L = Math.max(hueAdj.minL, Math.min(hueAdj.maxL, L));
+    
+    const maxC = findMaxChroma(L, h);
+    const ratio = random(targetChromaRatio.min, targetChromaRatio.max, rng);
+    
+    // FIX 2: Just use the ratio of maxC, no chromaBoost here
+    // chromaBoost will be applied later in adjustForVibrancyOklch
+    let C = maxC * ratio;
+    
+    // Stay safely in gamut
+    C = Math.min(C, maxC * 0.92);
+    
     result.push({ C, L });
   }
+  
   return result;
 };
 
 // ============================================
-// 3. MAIN PALETTE GENERATOR (OKLCH-based)
+// 4. MINIMUM DISTANCE ENFORCEMENT
+// ============================================
+
+const calculatePerceptualDistance = (hex1, hex2) => {
+  const lab1 = hexToOklab(hex1);
+  const lab2 = hexToOklab(hex2);
+  return deltaEOK(lab1, lab2);
+};
+
+const enforceMinimumDistance = (colors, minDistance = 0.08, maxAttempts = 50) => {
+  const result = [...colors];
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    let allGood = true;
+    
+    for (let i = 0; i < result.length; i++) {
+      for (let j = i + 1; j < result.length; j++) {
+        const dist = calculatePerceptualDistance(result[i], result[j]);
+        
+        if (dist < minDistance) {
+          allGood = false;
+          
+          const oklch1 = hexToOklch(result[i]);
+          const oklch2 = hexToOklch(result[j]);
+          
+          let newL = oklch2.L;
+          if (oklch2.L > oklch1.L) {
+            newL = Math.min(0.95, oklch2.L + 0.08);
+          } else {
+            newL = Math.max(0.10, oklch2.L - 0.08);
+          }
+          
+          let newC = oklch2.C;
+          if (oklch2.C < 0.15) {
+            newC = Math.min(oklch2.C + 0.03, findMaxChroma(newL, oklch2.h) * 0.9);
+          }
+          
+          result[j] = oklchToHex(newL, newC, oklch2.h);
+        }
+      }
+    }
+    
+    if (allGood) break;
+  }
+  
+  return result;
+};
+
+// ============================================
+// 5. MAIN PALETTE GENERATOR
 // ============================================
 
 export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}, rng = Math.random) => {
   let harmonyMode = mode;
-  let activeMood = constraints.mood || 'any'; // Default to existing mood
+  let activeMood = constraints.mood || 'any';
 
   if (mode === 'auto') {
     const roll = rng();
 
     if (count <= 2) {
-      if (roll < 0.50) harmonyMode = 'complementary';
-      else if (roll < 0.80) harmonyMode = 'mono';
+      if (roll < 0.45) harmonyMode = 'complementary';
+      else if (roll < 0.75) harmonyMode = 'mono';
       else harmonyMode = 'analogous';
     } else if (count === 3) {
-      if (roll < 0.40) harmonyMode = 'splitComplementary';
-      else if (roll < 0.70) harmonyMode = 'triadic';
-      else if (roll < 0.90) harmonyMode = 'analogous';
+      if (roll < 0.35) harmonyMode = 'triadic';
+      else if (roll < 0.60) harmonyMode = 'splitComplementary';
+      else if (roll < 0.85) harmonyMode = 'analogous';
+      else harmonyMode = 'mono';
+    } else if (count === 4) {
+      if (roll < 0.30) harmonyMode = 'tetradic';
+      else if (roll < 0.55) harmonyMode = 'analogous';
+      else if (roll < 0.75) harmonyMode = 'splitComplementary';
+      else if (roll < 0.90) harmonyMode = 'complementary';
       else harmonyMode = 'mono';
     } else if (count >= 6) {
-      if (roll < 0.60) harmonyMode = 'analogous';
-      else if (roll < 0.85) harmonyMode = 'mono';
+      if (roll < 0.55) harmonyMode = 'analogous';
+      else if (roll < 0.80) harmonyMode = 'mono';
       else harmonyMode = 'splitComplementary';
     } else {
-      if (roll < 0.45) harmonyMode = 'analogous';
-      else if (roll < 0.65) harmonyMode = 'mono';
-      else if (roll < 0.85) harmonyMode = 'complementary';
-      else if (roll < 0.95) harmonyMode = 'splitComplementary';
+      if (roll < 0.40) harmonyMode = 'analogous';
+      else if (roll < 0.60) harmonyMode = 'mono';
+      else if (roll < 0.80) harmonyMode = 'complementary';
+      else if (roll < 0.92) harmonyMode = 'splitComplementary';
       else harmonyMode = 'triadic';
     }
 
-    if (!constraints.mood) {
+    if (!constraints.mood || constraints.mood === 'any') {
       const moodRoll = rng();
-      if (moodRoll < 0.20) activeMood = 'vibrant';
-      else if (moodRoll < 0.40) activeMood = 'pastel';
-      else if (moodRoll < 0.60) activeMood = 'muted';
-      else if (moodRoll < 0.75) activeMood = 'dark';
-      else activeMood = 'any'; // The default "balanced" strategy
+    
+      if (moodRoll < 0.30) {
+        activeMood = 'vibrant';
+      } else if (moodRoll < 0.50) {
+        activeMood = 'muted';
+      } else if (moodRoll < 0.65) {
+        activeMood = 'pastel';
+      } else if (moodRoll < 0.80) {
+        activeMood = 'dark';
+      } else if (moodRoll < 0.90) {
+        activeMood = 'light';
+      } else {
+        activeMood = 'any';
+      }
     }
   }
 
@@ -335,35 +649,31 @@ export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}
 
     const polished = adjustForVibrancyOklch(L, C, h);
 
-    if (constraints.darkModeFriendly && polished.L > 0.85) polished.L = 0.85;
+    if (constraints.darkModeFriendly && polished.L > 0.85) {
+      polished.L = 0.85;
+      const maxC = findMaxChroma(polished.L, polished.h);
+      polished.C = Math.min(polished.C, maxC * 0.9);
+    }
 
     palette.push(oklchToHex(polished.L, polished.C, polished.h));
   }
+
+  palette = enforceMinimumDistance(palette, 0.06);
 
   return optimizeColorOrder(palette);
 };
 
 // ============================================
-// 4. UTILITIES (Sorting, Contrast, Shades)
+// 6. UTILITIES (Sorting, Contrast, Shades)
 // ============================================
 
-const getHueDistance = (h1, h2) => {
-  let diff = Math.abs(h1 - h2);
-  return diff > 180 ? 360 - diff : diff;
-};
-
-const getColorDistanceOklch = (c1, c2) => {
-  const hDist = getHueDistance(c1.h, c2.h);
-  const cDist = Math.abs(c1.C - c2.C) * 500;
-  const lDist = Math.abs(c1.L - c2.L) * 100;
-  return Math.sqrt((hDist * hDist * 0.3) + (cDist * cDist) + (lDist * lDist * 2));
-};
-
 const optimizeColorOrder = (colors) => {
+  if (colors.length <= 2) return colors;
+  
   const colorData = colors.map((hex) => ({
     hex,
-    hsl: hexToHsl(hex),
-    oklch: hexToOklch(hex)
+    oklch: hexToOklch(hex),
+    oklab: hexToOklab(hex),
   }));
 
   const hues = colorData.map(c => c.oklch.h);
@@ -372,10 +682,12 @@ const optimizeColorOrder = (colors) => {
   let hueSpread = maxHue - minHue;
   if (hueSpread > 180) hueSpread = 360 - hueSpread;
 
-  if (hueSpread < 40) {
+  // For monochromatic/analogous, sort by lightness
+  if (hueSpread < 45) {
     return colorData.sort((a, b) => a.oklch.L - b.oklch.L).map(c => c.hex);
   }
-
+  
+  // For diverse hues, use OKLab deltaE for nearest neighbor
   let current = colorData.reduce((prev, curr) => (curr.oklch.L < prev.oklch.L ? curr : prev));
   const sorted = [current];
   let remaining = colorData.filter(c => c !== current);
@@ -383,19 +695,22 @@ const optimizeColorOrder = (colors) => {
   while (remaining.length > 0) {
     let nearest = null;
     let minDist = Infinity;
+    
     for (const candidate of remaining) {
-      const dist = getColorDistanceOklch(current.oklch, candidate.oklch);
+      const dist = deltaEOK(current.oklab, candidate.oklab);
       if (dist < minDist) {
         minDist = dist;
         nearest = candidate;
       }
     }
+    
     if (nearest) {
       sorted.push(nearest);
       current = nearest;
       remaining = remaining.filter(c => c !== nearest);
     } else break;
   }
+  
   return sorted.map(c => c.hex);
 };
 
@@ -447,30 +762,25 @@ export const generateShades = (hex, totalSteps = 20) => {
   const maxLight = 0.97;
   const minLight = 0.08;
 
-  const currentIndex = Math.round((1 - ((L - minLight) / (maxLight - minLight))) * (totalSteps - 1));
-  const clampedIndex = Math.max(0, Math.min(totalSteps - 1, currentIndex));
-
-  // Generate lighter shades
-  if (clampedIndex > 0) {
-    const stepSize = (maxLight - L) / clampedIndex;
-    for (let i = 0; i < clampedIndex; i++) {
-      const newL = maxLight - (stepSize * i);
-      const newC = C * (0.5 + 0.5 * (1 - (newL - L) / (maxLight - L)));
-      shades.push(oklchToHex(newL, Math.max(0.01, newC), h));
+  for (let i = 0; i < totalSteps; i++) {
+    const t = i / (totalSteps - 1);
+    const newL = maxLight - t * (maxLight - minLight);
+    
+    const maxC = findMaxChroma(newL, h);
+    
+    let targetC;
+    if (newL > L) {
+      const ratio = (newL - L) / (maxLight - L);
+      targetC = C * (1 - ratio * 0.6);
+    } else {
+      const ratio = (L - newL) / (L - minLight);
+      targetC = C * (1 - ratio * 0.5);
     }
-  }
-
-  shades.push(hex);
-
-  // Generate darker shades
-  const remainingSteps = totalSteps - 1 - clampedIndex;
-  if (remainingSteps > 0) {
-    const stepSize = (L - minLight) / remainingSteps;
-    for (let i = 1; i <= remainingSteps; i++) {
-      const newL = L - (stepSize * i);
-      const newC = C * (0.6 + 0.4 * ((newL - minLight) / (L - minLight)));
-      shades.push(oklchToHex(newL, Math.max(0.01, newC), h));
-    }
+    
+    targetC = Math.min(targetC, maxC * 0.92);
+    targetC = Math.max(0.005, targetC);
+    
+    shades.push(oklchToHex(newL, targetC, h));
   }
 
   return shades;
@@ -497,7 +807,7 @@ export const simulateColorBlindness = (hex, type) => {
 };
 
 // ============================================
-// 5. DETERMINISTIC SEED SYSTEM
+// 7. DETERMINISTIC SEED SYSTEM
 // ============================================
 
 const pseudoRandom = (seedString) => {
@@ -532,7 +842,7 @@ const pickMultiple = (options, seedGen, count) => {
 };
 
 // ============================================
-// 6. COMPREHENSIVE COLOR ANALYSIS
+// 8. COMPREHENSIVE COLOR ANALYSIS
 // ============================================
 
 const getDetailedHueInfo = (h) => {
@@ -562,32 +872,30 @@ const getDetailedHueInfo = (h) => {
   return match || hueMap[0];
 };
 
-const analyzeColorTemperature = (hsls) => {
+const analyzeColorTemperatureFromHues = (hues) => {
   const warmRanges = [[0, 70], [320, 360]];
   const coolRanges = [[170, 280]];
 
   let warmCount = 0;
   let coolCount = 0;
 
-  hsls.forEach(({ h }) => {
+  for (const h of hues) {
     const inWarm = warmRanges.some(([min, max]) => h >= min && h < max);
     const inCool = coolRanges.some(([min, max]) => h >= min && h < max);
     if (inWarm) warmCount++;
     if (inCool) coolCount++;
-  });
+  }
 
-  const total = hsls.length;
+  const total = hues.length || 1;
   if (warmCount > total * 0.6) return { type: "warm", ratio: warmCount / total };
   if (coolCount > total * 0.6) return { type: "cool", ratio: coolCount / total };
   return { type: "balanced", ratio: 0.5 };
 };
 
-const detectHarmonyType = (hsls) => {
-  if (hsls.length < 2) return "single";
+const detectHarmonyTypeFromHues = (hues) => {
+  if (hues.length < 2) return "single";
 
-  const hues = hsls.map(c => c.h);
   const pairs = [];
-
   for (let i = 0; i < hues.length; i++) {
     for (let j = i + 1; j < hues.length; j++) {
       let diff = Math.abs(hues[i] - hues[j]);
@@ -599,7 +907,7 @@ const detectHarmonyType = (hsls) => {
   const maxDiff = Math.max(...pairs);
   const avgDiff = pairs.reduce((a, b) => a + b, 0) / pairs.length;
 
-  if (maxDiff < 25) return "monochromatic";
+  if (maxDiff < 25) return "monochromatic"; 
   if (maxDiff < 60) return "analogous";
   if (avgDiff > 100 && avgDiff < 140) return "triadic";
   if (maxDiff > 150 && maxDiff < 210) return "complementary";
@@ -607,7 +915,9 @@ const detectHarmonyType = (hsls) => {
   return "custom";
 };
 
+// Category flags based entirely on OKLCH values
 const getComprehensiveTraits = (hsls, hexColors) => {
+  // HSL averages (kept for backward compatibility / display only)
   const avgS = hsls.reduce((a, c) => a + c.s, 0) / hsls.length;
   const avgL = hsls.reduce((a, c) => a + c.l, 0) / hsls.length;
   const maxL = Math.max(...hsls.map(c => c.l));
@@ -617,12 +927,26 @@ const getComprehensiveTraits = (hsls, hexColors) => {
   const satStdDev = Math.sqrt(hsls.reduce((a, c) => a + Math.pow(c.s - avgS, 2), 0) / hsls.length);
   const lightStdDev = Math.sqrt(hsls.reduce((a, c) => a + Math.pow(c.l - avgL, 2), 0) / hsls.length);
 
-  const dominantHsl = hsls.reduce((prev, curr) => curr.s > prev.s ? curr : prev);
-  const hueInfo = getDetailedHueInfo(dominantHsl.h);
-  const temperature = analyzeColorTemperature(hsls);
-  const harmony = detectHarmonyType(hsls);
+  // OKLCH values for accurate perceptual analysis
+  const oklchs = hexColors.map(hexToOklch);
+  const hues = oklchs.map(c => c.h);
+  
+  // OKLCH averages for category flags
+  const avgOklchL = oklchs.reduce((a, c) => a + c.L, 0) / oklchs.length;
+  const avgOklchC = oklchs.reduce((a, c) => a + c.C, 0) / oklchs.length;
+  const maxOklchL = Math.max(...oklchs.map(c => c.L));
+  const minOklchL = Math.min(...oklchs.map(c => c.L));
+  const maxOklchC = Math.max(...oklchs.map(c => c.C));
+  const minOklchC = Math.min(...oklchs.map(c => c.C));
+  
+  // Find dominant color by OKLCH chroma
+  const dominant = oklchs.reduce((prev, curr) => (curr.C > prev.C ? curr : prev));
+  const hueInfo = getDetailedHueInfo(dominant.h);
+  
+  const temperature = analyzeColorTemperatureFromHues(hues);
+  const harmony = detectHarmonyTypeFromHues(hues);
 
-  // Find darkest and lightest colors by relative luminance for true WCAG contrast
+  // Find darkest and lightest by relative luminance for WCAG
   let darkestHex = hexColors[0];
   let lightestHex = hexColors[0];
   let minLum = relativeLuminance(hexColors[0]);
@@ -643,28 +967,47 @@ const getComprehensiveTraits = (hsls, hexColors) => {
   const contrastRatio = wcagContrastRatio(lightestHex, darkestHex).toFixed(2);
   const contrastValue = parseFloat(contrastRatio);
 
+  // Category flags based on OKLCH values (perceptually accurate)
+  const isVibrant = avgOklchC > 0.15;
+  const isMuted = avgOklchC < 0.08;
+  const isPastel = avgOklchC < 0.12 && avgOklchL > 0.75;
+  const isDark = avgOklchL < 0.40;
+  const isLight = avgOklchL > 0.70;
+  const isHighContrast = contrastValue >= 4.5;
+  const isLowContrast = contrastValue < 2;
+  const isUniform = satStdDev < 12 && lightStdDev < 15;
+  const hasNeutrals = oklchs.some(c => c.C < 0.03);
+
   return {
+    // HSL values (for display/backward compat)
     avgS, avgL, maxL, minL, lightnessRange,
     satStdDev, lightStdDev,
+    
+    // OKLCH values (for display and technical specs)
+    avgOklchL, avgOklchC, maxOklchL, minOklchL, maxOklchC, minOklchC,
+    dominantHueDeg: Math.round(dominant.h),
+    
+    // Analysis results
     hueInfo, temperature, harmony, contrastRatio,
 
-    isVibrant: avgS > 65,
-    isMuted: avgS < 35,
-    isPastel: avgS < 55 && avgL > 72,
-    isDark: avgL < 38,
-    isLight: avgL > 68,
-    isHighContrast: contrastValue >= 4.5,
-    isLowContrast: contrastValue < 2,
-    isUniform: satStdDev < 12 && lightStdDev < 15,
-    hasNeutrals: hsls.some(c => c.s < 15),
+    // Category flags (based on OKLCH)
+    isVibrant,
+    isMuted,
+    isPastel,
+    isDark,
+    isLight,
+    isHighContrast,
+    isLowContrast,
+    isUniform,
+    hasNeutrals,
 
-    vibrancyScore: Math.round((avgS + lightnessRange) / 2),
+    vibrancyScore: Math.round((avgOklchC * 500) + (maxOklchL - minOklchL) * 50),
     accessibilityScore: contrastValue >= 4.5 ? "good" : contrastValue >= 3 ? "moderate" : "limited"
   };
 };
 
 // ============================================
-// 7. SEMANTIC CONTENT DATABASE
+// 9. SEMANTIC CONTENT DATABASE
 // ============================================
 
 const contentDatabase = {
@@ -961,13 +1304,12 @@ const contentDatabase = {
 };
 
 // ============================================
-// 8. CONTENT GENERATION FUNCTIONS
+// 10. CONTENT GENERATION FUNCTIONS
 // ============================================
 
 const generateTitle = (traits, colorCount, seedGen) => {
   const hue = traits.hueInfo.primary;
   const detailed = traits.hueInfo.detailed;
-  const harmony = traits.harmony;
 
   const templates = [];
 
@@ -1003,21 +1345,21 @@ const generateTitle = (traits, colorCount, seedGen) => {
     );
   }
 
-  if (harmony === "monochromatic") {
+  if (traits.harmony === "monochromatic") {
     templates.push(
       `Monochromatic ${capitalize(hue)} Palette: ${colorCount} Tonal Variations`,
       `Single-Hue ${capitalize(detailed)} Color System`
     );
   }
 
-  if (harmony === "analogous") {
+  if (traits.harmony === "analogous") {
     templates.push(
       `Analogous ${capitalize(hue)} Color Harmony: ${colorCount} Adjacent Hues`,
       `Harmonious ${capitalize(detailed)} Gradient Palette`
     );
   }
 
-  if (harmony === "complementary") {
+  if (traits.harmony === "complementary") {
     templates.push(
       `Complementary ${capitalize(hue)} Color Scheme: ${colorCount} Contrasting Tones`,
       `High-Contrast ${capitalize(detailed)} Palette`
@@ -1219,13 +1561,22 @@ const generateIndustrySection = (sectionKey, traits, seedGen) => {
   return contexts.length > 0 ? content + contexts.join(' ') : null;
 };
 
+// FIX 4: Technical specs now use OKLCH values consistently
 const generateTechnicalSpecs = (colors, traits) => {
+  // Convert OKLCH L to percentage for display (0-1 -> 0-100%)
+  const avgLPercent = Math.round(traits.avgOklchL * 100);
+  const minLPercent = Math.round(traits.minOklchL * 100);
+  const maxLPercent = Math.round(traits.maxOklchL * 100);
+  
+  // Convert OKLCH C to a more readable scale (typical range 0-0.4 -> 0-100)
+  const avgCPercent = Math.round(traits.avgOklchC * 250); // Scale so 0.4 ≈ 100
+  
   const specs = [
     `Palette Size: ${colors.length} colors`,
-    `Primary Hue: ${Math.round(traits.hueInfo.detailed === traits.hueInfo.primary ? hexToHsl(colors[0]).h : hexToHsl(colors[0]).h)} degrees`,
+    `Primary Hue: ${traits.dominantHueDeg}°`,
     `Color Harmony: ${traits.harmony}`,
-    `Saturation Range: ${Math.round(traits.avgS)}% average`,
-    `Lightness Range: ${Math.round(traits.minL)}% to ${Math.round(traits.maxL)}%`,
+    `Chroma: ${avgCPercent}% average (OKLCH)`,
+    `Lightness Range: ${minLPercent}% to ${maxLPercent}% (OKLCH)`,
     `Contrast Ratio: ${traits.contrastRatio}:1`,
     `Temperature: ${traits.temperature.type}`,
     `Accessibility Rating: ${traits.accessibilityScore} contrast separation`
@@ -1241,7 +1592,7 @@ const generateExportInfo = () => {
 const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
 
 // ============================================
-// 9. KEYWORD GENERATION
+// 11. KEYWORD GENERATION
 // ============================================
 
 const generateKeywords = (traits, colorCount) => {
@@ -1280,7 +1631,7 @@ const generateKeywords = (traits, colorCount) => {
 };
 
 // ============================================
-// 10. MAIN SEO GENERATOR
+// 12. MAIN SEO GENERATOR
 // ============================================
 
 export const generateRichSEO = (colors, mode = 'auto', mood = 'any') => {
