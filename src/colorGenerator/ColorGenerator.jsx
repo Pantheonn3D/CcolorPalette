@@ -36,6 +36,7 @@ import {
   generateShades,
   generateRichSEO,
   hexToHsl,
+  hexToOklch,
 } from '../utils/colorUtils';
 
 // Constants
@@ -61,15 +62,11 @@ const isMobileView = () => window.innerWidth <= MOBILE_BREAKPOINT;
 
 const getMaxOpenPanels = () => (isMobileView() ? 1 : 3);
 
-// Fixed: Handle both 3 and 6 character hex codes
 const hexToRgb = (hex) => {
   let cleanHex = hex.replace('#', '');
-  
-  // Expand 3-char hex to 6-char
   if (cleanHex.length === 3) {
     cleanHex = cleanHex.split('').map(char => char + char).join('');
   }
-  
   return {
     r: parseInt(cleanHex.slice(0, 2), 16),
     g: parseInt(cleanHex.slice(2, 4), 16),
@@ -93,7 +90,6 @@ const formatContentSections = (content) => {
   });
 };
 
-// Validate hex string
 const isValidHex = (hex) => {
   const cleanHex = hex.replace(/[^0-9A-F]/gi, '');
   return /^([0-9A-F]{3}){1,2}$/i.test(cleanHex);
@@ -103,7 +99,7 @@ function ColorGenerator() {
   // Refs
   const containerRef = useRef(null);
   const colorsAreaRef = useRef(null);
-  const removingIdsRef = useRef(new Set()); // Track colors being removed
+  const removingIdsRef = useRef(new Set());
 
   // Layout State
   const [stackColors, setStackColors] = useState(false);
@@ -124,10 +120,8 @@ function ColorGenerator() {
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  // Ref to track the live history index (avoids stale closure)
   const historyIndexRef = useRef(historyIndex);
 
-  // Keep the ref synced with state
   useEffect(() => {
     historyIndexRef.current = historyIndex;
   }, [historyIndex]);
@@ -157,7 +151,7 @@ function ColorGenerator() {
   const [activeShadeId, setActiveShadeId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
-  const [hexError, setHexError] = useState(false); // New: track invalid hex
+  const [hexError, setHexError] = useState(false);
 
   // Drag State
   const [dragState, setDragState] = useState(null);
@@ -216,7 +210,6 @@ function ColorGenerator() {
   }, [colors, generationMode, constraints, colorBlindMode]);
 
   // History Management
-  // Fixed: Removed historyIndex from deps since we use historyIndexRef
   const updateColors = useCallback(
     (newColors) => {
       setHistory((prev) => {
@@ -265,7 +258,7 @@ function ColorGenerator() {
     [history.length]
   );
 
-  // Palette Generation
+  // Palette Generation - Enhanced with locked color analysis
   const generatePalette = useCallback(
     (count = 5) => {
       const lockedColors = colors.filter((c) => c.locked);
@@ -276,8 +269,39 @@ function ColorGenerator() {
       let generationConstraints = { ...constraints };
       
       if (lockedColors.length > 0) {
-        const lockedHsl = hexToHsl(lockedColors[0].hex);
-        generationConstraints.baseHue = lockedHsl.h;
+        // Analyze ALL locked colors
+        const lockedOklchs = lockedColors.map(c => hexToOklch(c.hex));
+        const lockedHsls = lockedColors.map(c => hexToHsl(c.hex));
+        
+        // Calculate averages from locked colors
+        const avgChroma = lockedOklchs.reduce((a, c) => a + c.C, 0) / lockedOklchs.length;
+        const avgLightness = lockedOklchs.reduce((a, c) => a + c.L, 0) / lockedOklchs.length;
+        const avgHue = lockedHsls[0].h;
+        
+        // Determine mood from locked colors
+        let inferredMood = 'any';
+        if (avgChroma > 0.15 && avgLightness > 0.45 && avgLightness < 0.80) {
+          inferredMood = 'vibrant';
+        } else if (avgChroma < 0.08) {
+          inferredMood = 'muted';
+        } else if (avgChroma < 0.13 && avgLightness > 0.75) {
+          inferredMood = 'pastel';
+        } else if (avgLightness < 0.35) {
+          inferredMood = 'dark';
+        } else if (avgLightness > 0.75) {
+          inferredMood = 'light';
+        }
+        
+        // Pass all locked color data to the generator
+        generationConstraints.baseHue = avgHue;
+        generationConstraints.lockedColors = lockedColors.map(c => c.hex);
+        generationConstraints.targetChroma = avgChroma;
+        generationConstraints.targetLightness = avgLightness;
+        
+        // Only override mood if user hasn't explicitly set one
+        if (!constraints.mood || constraints.mood === 'any') {
+          generationConstraints.mood = inferredMood;
+        }
       }
 
       const newPalette = generateRandomPalette(generationMode, unlockedCount, generationConstraints);
@@ -335,10 +359,9 @@ function ColorGenerator() {
     setTimeout(() => setNewColorId(null), 600);
   };
 
-  // Fixed: Prevent race condition with rapid removals
   const removeColor = (id) => {
     if (colors.length <= 2) return;
-    if (removingIdsRef.current.has(id)) return; // Prevent double-removal
+    if (removingIdsRef.current.has(id)) return;
     
     trackEvent('remove_color', { current_count: colors.length });
     removingIdsRef.current.add(id);
@@ -370,8 +393,7 @@ function ColorGenerator() {
     }
   };
 
-  // --- Hex Editing Handlers ---
-
+  // Hex Editing Handlers
   const handleHexClick = (id, currentHex, e) => {
     e.stopPropagation();
     setEditingId(id);
@@ -389,7 +411,6 @@ function ColorGenerator() {
     let cleanHex = editValue.replace(/[^0-9A-F]/gi, '').toUpperCase();
 
     if (isValidHex(cleanHex)) {
-      // Expand 3-char hex to 6-char
       if (cleanHex.length === 3) {
         cleanHex = cleanHex.split('').map(char => char + char).join('');
       }
@@ -405,7 +426,6 @@ function ColorGenerator() {
       
       setHexError(false);
     } else {
-      // Show error feedback briefly, then reset
       setHexError(true);
       setTimeout(() => {
         setHexError(false);
@@ -462,7 +482,7 @@ function ColorGenerator() {
     };
   }, [activeShadeId]);
 
-  // Updated getColumnSize function
+  // Column Size Calculation
   const getColumnSize = useCallback(() => {
     if (!containerRef.current) return 0;
 
@@ -503,9 +523,8 @@ function ColorGenerator() {
     stackColors,
   ]);
 
-  // Updated handleDragStart
+  // Drag Handlers
   const handleDragStart = (e, id, index) => {
-    // Only prevent default for touch to allow drag, but not block all touches
     if (e.type === 'touchstart') {
       e.preventDefault();
     }
@@ -545,7 +564,6 @@ function ColorGenerator() {
     });
   };
 
-  // Updated handleMouseMove
   const handleMouseMove = useCallback(
     (e) => {
       if (!dragState || isSnapping) return;
@@ -632,7 +650,7 @@ function ColorGenerator() {
     };
   }, [dragState, handleMouseMove, handleMouseUp]);
 
-  // Updated getColumnStyle
+  // Get Column Style
   const getColumnStyle = (index, id) => {
     if (!dragState) return {};
 
@@ -673,7 +691,7 @@ function ColorGenerator() {
     };
   };
 
-  // Layout detection
+  // Layout Detection
   useEffect(() => {
     const el = colorsAreaRef.current;
     if (!el) return;
@@ -745,7 +763,6 @@ function ColorGenerator() {
         }
       }
 
-      // Parse query params
       const mode = params.get('mode');
       const mood = params.get('mood');
       const contrast = parseFloat(params.get('contrast'));
@@ -755,7 +772,6 @@ function ColorGenerator() {
       if (['auto', 'mono', 'analogous', 'complementary', 'splitComplementary', 'triadic'].includes(mode)) {
         setGenerationMode(mode);
       }
-      // Fixed: Added 'light' to valid moods
       if (['any', 'muted', 'pastel', 'vibrant', 'dark', 'light'].includes(mood)) {
         setConstraints((prev) => ({ ...prev, mood }));
       }
@@ -788,7 +804,7 @@ function ColorGenerator() {
     window.history.replaceState({}, '', `/${hexes}${queryString ? '?' + queryString : ''}`);
   }, [colors, generationMode, constraints, colorBlindMode]);
 
-  // Expose API - Fixed: Added cleanup
+  // Expose API
   useEffect(() => {
     window.chromaAPI = {
       undo,
@@ -806,7 +822,6 @@ function ColorGenerator() {
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Don't trigger shortcuts when editing hex
       if (editingId) return;
       
       if (e.code === 'Space') {
@@ -862,15 +877,13 @@ function ColorGenerator() {
     return `${window.location.origin}/.netlify/functions/og-image?colors=${hexPath}`;
   }, [colors]);
 
-  // Fixed: Memoize related palettes to avoid regenerating on every render
   const relatedPalettes = useMemo(() => {
     if (colors.length === 0) return [];
     
     const baseHsl = hexToHsl(colors[0].hex);
     
     return Array.from({ length: 6 }).map((_, i) => {
-      // Use baseHue from current palette's first color, with slight rotation for variety
-      const hueOffset = i * 30; // Rotate hue for each related palette
+      const hueOffset = i * 30;
       const palette = generateRandomPalette('analogous', 5, { 
         baseHue: (baseHsl.h + hueOffset) % 360 
       });
@@ -1293,7 +1306,6 @@ function ColorGenerator() {
             </div>
           )}
 
-          {/* Fixed: Use memoized related palettes */}
           <div className="seo-related-links">
             <h3 className="seo-section-title">Explore Related Palettes</h3>
             <div>
@@ -1349,6 +1361,6 @@ function ColorGenerator() {
       </footer>
     </div>
   );
-} 
+}
 
 export default ColorGenerator;
