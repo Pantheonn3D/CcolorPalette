@@ -198,6 +198,205 @@ export const oklchToHex = (L, C, h) => {
 
 const random = (min, max, rng) => rng() * (max - min) + min;
 
+const clamp = (x, min, max) => Math.max(min, Math.min(max, x));
+
+const randn = (rng) => {
+  // Box-Muller transform
+  let u = 0;
+  let v = 0;
+  while (u === 0) u = rng();
+  while (v === 0) v = rng();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+};
+
+const jitterWeights = (weights, rng, sigma = 0.16) => {
+  // log-normal jitter, preserves positivity, feels "alive" but not chaotic
+  const out = {};
+  for (const k of Object.keys(weights)) {
+    const w = weights[k];
+    if (w <= 0) {
+      out[k] = 0;
+      continue;
+    }
+    out[k] = w * Math.exp(randn(rng) * sigma);
+  }
+  return out;
+};
+
+const normalizeWeights = (weights) => {
+  let sum = 0;
+  for (const k of Object.keys(weights)) sum += weights[k];
+  if (sum <= 0) return weights;
+
+  const out = {};
+  for (const k of Object.keys(weights)) out[k] = weights[k] / sum;
+  return out;
+};
+
+const weightedPick = (weights, rng) => {
+  // assumes weights are non-negative, normalization not required
+  let total = 0;
+  const keys = Object.keys(weights);
+  for (const k of keys) total += weights[k];
+  if (total <= 0) return keys[keys.length - 1];
+
+  let r = rng() * total;
+  for (const k of keys) {
+    r -= weights[k];
+    if (r <= 0) return k;
+  }
+  return keys[keys.length - 1];
+};
+
+const circularHueDiff = (a, b) => {
+  let d = Math.abs(a - b);
+  if (d > 180) d = 360 - d;
+  return d;
+};
+
+const getLockedStats = (lockedColors) => {
+  const oklchs = lockedColors.map(hexToOklch);
+  const Ls = oklchs.map(c => c.L);
+  const Cs = oklchs.map(c => c.C);
+  const Hs = oklchs.map(c => c.h);
+
+  const avgL = Ls.reduce((s, v) => s + v, 0) / Ls.length;
+  const avgC = Cs.reduce((s, v) => s + v, 0) / Cs.length;
+
+  let maxHueSpread = 0;
+  for (let i = 0; i < Hs.length; i++) {
+    for (let j = i + 1; j < Hs.length; j++) {
+      maxHueSpread = Math.max(maxHueSpread, circularHueDiff(Hs[i], Hs[j]));
+    }
+  }
+
+  return {
+    count: lockedColors.length,
+    avgL,
+    avgC,
+    hues: Hs,
+    maxHueSpread,
+  };
+};
+
+const inferMoodWeightsFromLocked = (lockedStats) => {
+  const { avgL, avgC } = lockedStats;
+
+  // Simple, tasteful mapping:
+  // - high L + low C => pastel
+  // - low L => dark
+  // - high C => vibrant
+  // - otherwise muted/light/any mix
+  const pastel = avgL > 0.74 && avgC < 0.12;
+  const dark = avgL < 0.42;
+  const vibrant = avgC > 0.15;
+  const light = avgL > 0.72 && avgC >= 0.12;
+
+  if (pastel) {
+    return { pastel: 0.72, muted: 0.14, light: 0.10, any: 0.04 };
+  }
+  if (dark) {
+    return { dark: 0.72, muted: 0.16, vibrant: 0.08, any: 0.04 };
+  }
+  if (vibrant) {
+    return { vibrant: 0.68, muted: 0.16, dark: 0.08, any: 0.08 };
+  }
+  if (light) {
+    return { light: 0.62, pastel: 0.18, muted: 0.12, any: 0.08 };
+  }
+  return { muted: 0.50, vibrant: 0.18, pastel: 0.16, light: 0.10, any: 0.06 };
+};
+
+const buildHarmonyWeights = ({ count, hasLockedColors, lockedStats }) => {
+  // Base priors, then modulate.
+  // Values are intentionally not normalized; we normalize later.
+  let w = {
+    analogous: 0.90,
+    splitComplementary: 0.65,
+    complementary: 0.55,
+    triadic: 0.35,
+    mono: 0.45,
+    tetradic: 0.18,
+  };
+
+  // Respect palette size
+  if (count <= 2) {
+    w = { complementary: 0.95, mono: 0.70, analogous: 0.55 };
+  } else if (count === 3) {
+    w.tetradic = 0;
+    w.triadic *= 1.25;
+    w.splitComplementary *= 1.10;
+    w.mono *= 0.90;
+  } else if (count === 4) {
+    w.tetradic *= 1.15;
+  } else if (count >= 6) {
+    // Big palettes get noisy fast; push toward cohesive schemes
+    w.analogous *= 1.20;
+    w.mono *= 1.10;
+    w.tetradic *= 0.65;
+    w.triadic *= 0.85;
+  }
+
+  // Disable tetradic if it cannot express itself
+  if (count < 4) w.tetradic = 0;
+
+  // Locked color conditioning
+  if (hasLockedColors && lockedStats) {
+    const vivid = clamp((lockedStats.avgC - 0.07) / 0.14, 0, 1);
+    const extremeL = clamp((Math.abs(lockedStats.avgL - 0.5) - 0.22) / 0.28, 0, 1);
+
+    // Vivid locked colors clash more with far-apart harmonies
+    w.analogous *= 1 + 0.65 * vivid;
+    w.splitComplementary *= 1 + 0.25 * vivid;
+    w.complementary *= 1 - 0.55 * vivid;
+    w.triadic *= 1 - 0.60 * vivid;
+    w.tetradic *= 1 - 0.70 * vivid;
+
+    // Very dark or very light locked colors prefer smaller hue moves
+    w.analogous *= 1 + 0.30 * extremeL;
+    w.mono *= 1 + 0.25 * extremeL;
+    w.complementary *= 1 - 0.25 * extremeL;
+    w.triadic *= 1 - 0.25 * extremeL;
+
+    // If multiple locks exist, use hue spread to steer harmony
+    if (lockedStats.count >= 2) {
+      const spread = lockedStats.maxHueSpread;
+
+      if (spread < 45) {
+        w.analogous *= 1.55;
+        w.mono *= 1.25;
+        w.complementary *= 0.55;
+        w.splitComplementary *= 0.75;
+        w.triadic *= 0.55;
+        w.tetradic *= 0.45;
+      } else if (spread > 140) {
+        w.complementary *= 1.35;
+        w.splitComplementary *= 1.20;
+        w.analogous *= 0.75;
+        w.mono *= 0.70;
+        w.triadic *= 0.85;
+      } else {
+        w.splitComplementary *= 1.25;
+        w.triadic *= 1.10;
+        w.analogous *= 0.90;
+        w.mono *= 0.90;
+      }
+    }
+  }
+
+  return normalizeWeights(w);
+};
+
+const applyStickiness = (weights, preferredKey, stickiness = 0.55) => {
+  // If preferredKey exists, bias it without forcing it.
+  if (!preferredKey || !weights[preferredKey]) return weights;
+
+  const out = { ...weights };
+  out[preferredKey] = out[preferredKey] * (1 + stickiness);
+  return normalizeWeights(out);
+};
+
+
 // ============================================
 // 2. GAMUT-AWARE CHROMA UTILITIES
 // ============================================
@@ -587,85 +786,56 @@ export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}
   let activeMood = constraints.mood || 'any';
   
   const hasLockedColors = constraints.lockedColors && constraints.lockedColors.length > 0;
-  const targetChroma = constraints.targetChroma;
-  const targetLightness = constraints.targetLightness;
+  let targetChroma = constraints.targetChroma;
+  let targetLightness = constraints.targetLightness;
+  
+  if (hasLockedColors && (targetChroma == null || targetLightness == null)) {
+    const lockedStats = getLockedStats(constraints.lockedColors);
+    if (targetChroma == null) targetChroma = lockedStats.avgC;
+    if (targetLightness == null) targetLightness = lockedStats.avgL;
+  }
 
   if (mode === 'auto') {
-    const roll = rng();
-
-    if (hasLockedColors) {
-      const lockedCount = constraints.lockedColors.length;
-      
-      if (lockedCount === 1) {
-        if (roll < 0.40) harmonyMode = 'analogous';
-        else if (roll < 0.70) harmonyMode = 'complementary';
-        else if (roll < 0.88) harmonyMode = 'splitComplementary';
-        else harmonyMode = 'triadic';
+    const lockedStats = hasLockedColors ? getLockedStats(constraints.lockedColors) : null;
+  
+    // Harmony choice (weighted, conditioned, gently jittered)
+    let harmonyWeights = buildHarmonyWeights({ count, hasLockedColors, lockedStats });
+    harmonyWeights = jitterWeights(harmonyWeights, rng, 0.16);
+  
+    // Optional: keep a little continuity if you provide prevHarmonyMode
+    harmonyWeights = applyStickiness(harmonyWeights, constraints.prevHarmonyMode, 0.60);
+  
+    harmonyMode = weightedPick(harmonyWeights, rng);
+  
+    // Mood choice
+    if (!constraints.mood || constraints.mood === 'any') {
+      let moodWeights;
+  
+      if (hasLockedColors && lockedStats) {
+        moodWeights = inferMoodWeightsFromLocked(lockedStats);
       } else {
-        const lockedHues = constraints.lockedColors.map(hex => hexToOklch(hex).h);
-        let maxHueSpread = 0;
-        for (let i = 0; i < lockedHues.length; i++) {
-          for (let j = i + 1; j < lockedHues.length; j++) {
-            let diff = Math.abs(lockedHues[i] - lockedHues[j]);
-            if (diff > 180) diff = 360 - diff;
-            maxHueSpread = Math.max(maxHueSpread, diff);
-          }
+        // Your old distribution, but as weights so we can jitter and tune
+        moodWeights = {
+          vibrant: 0.45,
+          muted: 0.13,
+          pastel: 0.14,
+          dark: 0.13,
+          light: 0.08,
+          any: 0.07,
+        };
+  
+        // Big palettes tend to look nicer with less saturation on average
+        if (count >= 6) {
+          moodWeights.muted *= 1.25;
+          moodWeights.pastel *= 1.15;
+          moodWeights.vibrant *= 0.85;
         }
-        
-        if (maxHueSpread < 45) {
-          harmonyMode = 'analogous';
-        } else if (maxHueSpread > 140) {
-          harmonyMode = roll < 0.6 ? 'complementary' : 'splitComplementary';
-        } else {
-          harmonyMode = roll < 0.5 ? 'splitComplementary' : 'triadic';
-        }
       }
-    } else {
-      if (count <= 2) {
-        if (roll < 0.45) harmonyMode = 'complementary';
-        else if (roll < 0.70) harmonyMode = 'mono';
-        else harmonyMode = 'analogous';
-      } else if (count === 3) {
-        if (roll < 0.35) harmonyMode = 'triadic';
-        else if (roll < 0.60) harmonyMode = 'splitComplementary';
-        else if (roll < 0.82) harmonyMode = 'analogous';
-        else harmonyMode = 'mono';
-      } else if (count === 4) {
-        if (roll < 0.28) harmonyMode = 'tetradic';
-        else if (roll < 0.50) harmonyMode = 'splitComplementary';
-        else if (roll < 0.70) harmonyMode = 'complementary';
-        else if (roll < 0.88) harmonyMode = 'analogous';
-        else harmonyMode = 'triadic';
-      } else if (count >= 6) {
-        if (roll < 0.45) harmonyMode = 'analogous';
-        else if (roll < 0.65) harmonyMode = 'splitComplementary';
-        else if (roll < 0.80) harmonyMode = 'mono';
-        else harmonyMode = 'triadic';
-      } else {
-        if (roll < 0.30) harmonyMode = 'analogous';
-        else if (roll < 0.50) harmonyMode = 'complementary';
-        else if (roll < 0.70) harmonyMode = 'splitComplementary';
-        else if (roll < 0.85) harmonyMode = 'triadic';
-        else harmonyMode = 'mono';
-      }
-    }
-
-    if ((!constraints.mood || constraints.mood === 'any') && !hasLockedColors) {
-      const moodRoll = rng();
-    
-      if (moodRoll < 0.45) {
-        activeMood = 'vibrant';
-      } else if (moodRoll < 0.58) {
-        activeMood = 'muted';
-      } else if (moodRoll < 0.72) {
-        activeMood = 'pastel';
-      } else if (moodRoll < 0.85) {
-        activeMood = 'dark';
-      } else if (moodRoll < 0.93) {
-        activeMood = 'light';
-      } else {
-        activeMood = 'any';
-      }
+  
+      moodWeights = normalizeWeights(jitterWeights(moodWeights, rng, 0.12));
+      moodWeights = applyStickiness(moodWeights, constraints.prevMood, 0.50);
+  
+      activeMood = weightedPick(moodWeights, rng);
     }
   }
 
@@ -695,6 +865,191 @@ export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}
 // 6. UTILITIES
 // ============================================
 
+// ============================================
+// IMPROVED COLOR SORTING
+// ============================================
+
+// Calculate the "smoothness" score of an ordering (lower is better)
+const calculateOrderingSmoothness = (colorData) => {
+  if (colorData.length <= 1) return 0;
+  
+  let totalDistance = 0;
+  let maxStep = 0;
+  const steps = [];
+  
+  for (let i = 1; i < colorData.length; i++) {
+    const dist = deltaEOK(colorData[i - 1].oklab, colorData[i].oklab);
+    steps.push(dist);
+    totalDistance += dist;
+    maxStep = Math.max(maxStep, dist);
+  }
+  
+  // Calculate variance in step sizes (we want even steps)
+  const avgStep = totalDistance / steps.length;
+  const variance = steps.reduce((sum, s) => sum + Math.pow(s - avgStep, 2), 0) / steps.length;
+  
+  // Score combines: total distance, max single step, and variance
+  // Weight max step heavily to avoid jarring transitions
+  return totalDistance + (maxStep * 3) + (Math.sqrt(variance) * 2);
+};
+
+// Sort by hue with proper wrap-around handling
+const sortByHue = (colorData) => {
+  const sorted = [...colorData];
+  
+  // Find the largest gap in hues to determine where to "cut" the circle
+  const hues = sorted.map(c => c.oklch.h).sort((a, b) => a - b);
+  let maxGap = 0;
+  let cutPoint = 0;
+  
+  for (let i = 0; i < hues.length; i++) {
+    const nextI = (i + 1) % hues.length;
+    let gap = hues[nextI] - hues[i];
+    if (nextI === 0) gap += 360; // Wrap around
+    
+    if (gap > maxGap) {
+      maxGap = gap;
+      cutPoint = hues[nextI];
+    }
+  }
+  
+  // Sort by hue, offset by cutPoint to handle wrap-around
+  sorted.sort((a, b) => {
+    const hueA = (a.oklch.h - cutPoint + 360) % 360;
+    const hueB = (b.oklch.h - cutPoint + 360) % 360;
+    return hueA - hueB;
+  });
+  
+  return sorted;
+};
+
+// Sort by lightness (can be ascending or descending)
+const sortByLightness = (colorData, ascending = true) => {
+  const sorted = [...colorData];
+  sorted.sort((a, b) => ascending ? a.oklch.L - b.oklch.L : b.oklch.L - a.oklch.L);
+  return sorted;
+};
+
+// Sort by chroma (saturation)
+const sortByChroma = (colorData, ascending = true) => {
+  const sorted = [...colorData];
+  sorted.sort((a, b) => ascending ? a.oklch.C - b.oklch.C : b.oklch.C - a.oklch.C);
+  return sorted;
+};
+
+// Nearest neighbor but try multiple starting points
+const nearestNeighborBest = (colorData) => {
+  let bestOrdering = null;
+  let bestScore = Infinity;
+  
+  // Try starting from each color
+  for (let startIdx = 0; startIdx < colorData.length; startIdx++) {
+    const ordering = nearestNeighborFrom(colorData, startIdx);
+    const score = calculateOrderingSmoothness(ordering);
+    
+    if (score < bestScore) {
+      bestScore = score;
+      bestOrdering = ordering;
+    }
+    
+    // Also try the reverse
+    const reversed = [...ordering].reverse();
+    const reverseScore = calculateOrderingSmoothness(reversed);
+    if (reverseScore < bestScore) {
+      bestScore = reverseScore;
+      bestOrdering = reversed;
+    }
+  }
+  
+  return bestOrdering;
+};
+
+const nearestNeighborFrom = (colorData, startIdx) => {
+  const sorted = [colorData[startIdx]];
+  const remaining = colorData.filter((_, i) => i !== startIdx);
+  
+  while (remaining.length > 0) {
+    const current = sorted[sorted.length - 1];
+    let nearestIdx = 0;
+    let minDist = Infinity;
+    
+    for (let i = 0; i < remaining.length; i++) {
+      const dist = deltaEOK(current.oklab, remaining[i].oklab);
+      if (dist < minDist) {
+        minDist = dist;
+        nearestIdx = i;
+      }
+    }
+    
+    sorted.push(remaining[nearestIdx]);
+    remaining.splice(nearestIdx, 1);
+  }
+  
+  return sorted;
+};
+
+// 2-opt improvement: swap pairs to reduce total distance
+const twoOptImprove = (colorData, maxIterations = 100) => {
+  let improved = [...colorData];
+  let bestScore = calculateOrderingSmoothness(improved);
+  
+  for (let iter = 0; iter < maxIterations; iter++) {
+    let foundImprovement = false;
+    
+    for (let i = 0; i < improved.length - 2; i++) {
+      for (let j = i + 2; j < improved.length; j++) {
+        // Try reversing the segment between i+1 and j
+        const newOrder = [
+          ...improved.slice(0, i + 1),
+          ...improved.slice(i + 1, j + 1).reverse(),
+          ...improved.slice(j + 1)
+        ];
+        
+        const newScore = calculateOrderingSmoothness(newOrder);
+        if (newScore < bestScore) {
+          improved = newOrder;
+          bestScore = newScore;
+          foundImprovement = true;
+        }
+      }
+    }
+    
+    if (!foundImprovement) break;
+  }
+  
+  return improved;
+};
+
+// Luminance-weighted hue sorting (good for rainbow-like progressions)
+const sortByHueThenLightness = (colorData) => {
+  const hueSorted = sortByHue(colorData);
+  
+  // Group by similar hues and sort within groups by lightness
+  const groups = [];
+  let currentGroup = [hueSorted[0]];
+  
+  for (let i = 1; i < hueSorted.length; i++) {
+    const hueDiff = Math.abs(hueSorted[i].oklch.h - hueSorted[i - 1].oklch.h);
+    const normalizedDiff = hueDiff > 180 ? 360 - hueDiff : hueDiff;
+    
+    if (normalizedDiff < 30) {
+      currentGroup.push(hueSorted[i]);
+    } else {
+      // Sort current group by lightness before moving on
+      currentGroup.sort((a, b) => a.oklch.L - b.oklch.L);
+      groups.push(...currentGroup);
+      currentGroup = [hueSorted[i]];
+    }
+  }
+  
+  // Don't forget the last group
+  currentGroup.sort((a, b) => a.oklch.L - b.oklch.L);
+  groups.push(...currentGroup);
+  
+  return groups;
+};
+
+// Main improved sorting function
 const optimizeColorOrder = (colors) => {
   if (colors.length <= 2) return colors;
   
@@ -704,40 +1059,68 @@ const optimizeColorOrder = (colors) => {
     oklab: hexToOklab(hex),
   }));
 
+  // Analyze the palette characteristics
   const hues = colorData.map(c => c.oklch.h);
-  const minHue = Math.min(...hues);
-  const maxHue = Math.max(...hues);
-  let hueSpread = maxHue - minHue;
-  if (hueSpread > 180) hueSpread = 360 - hueSpread;
-
-  if (hueSpread < 45) {
-    return colorData.sort((a, b) => a.oklch.L - b.oklch.L).map(c => c.hex);
-  }
+  const lightnesses = colorData.map(c => c.oklch.L);
+  const chromas = colorData.map(c => c.oklch.C);
   
-  let current = colorData.reduce((prev, curr) => (curr.oklch.L < prev.oklch.L ? curr : prev));
-  const sorted = [current];
-  let remaining = colorData.filter(c => c !== current);
-
-  while (remaining.length > 0) {
-    let nearest = null;
-    let minDist = Infinity;
+  // Calculate hue spread (handling wrap-around)
+  const sortedHues = [...hues].sort((a, b) => a - b);
+  let maxHueGap = 0;
+  for (let i = 0; i < sortedHues.length; i++) {
+    const nextI = (i + 1) % sortedHues.length;
+    let gap = sortedHues[nextI] - sortedHues[i];
+    if (nextI === 0) gap += 360;
+    maxHueGap = Math.max(maxHueGap, gap);
+  }
+  const hueSpread = 360 - maxHueGap;
+  
+  // Calculate lightness and chroma ranges
+  const lightnessRange = Math.max(...lightnesses) - Math.min(...lightnesses);
+  const chromaRange = Math.max(...chromas) - Math.min(...chromas);
+  
+  // Determine the best sorting strategy based on palette characteristics
+  let candidates = [];
+  
+  if (hueSpread < 40) {
+    // Monochromatic/analogous: lightness is the main differentiator
+    candidates.push(sortByLightness(colorData, true));  // Dark to light
+    candidates.push(sortByLightness(colorData, false)); // Light to dark
     
-    for (const candidate of remaining) {
-      const dist = deltaEOK(current.oklab, candidate.oklab);
-      if (dist < minDist) {
-        minDist = dist;
-        nearest = candidate;
-      }
+    // If chroma varies significantly, also try chroma-based
+    if (chromaRange > 0.08) {
+      candidates.push(sortByChroma(colorData, true));
+      candidates.push(sortByChroma(colorData, false));
     }
-    
-    if (nearest) {
-      sorted.push(nearest);
-      current = nearest;
-      remaining = remaining.filter(c => c !== nearest);
-    } else break;
+  } else if (hueSpread > 180) {
+    // Wide hue spread: try hue-based sorting
+    candidates.push(sortByHue(colorData));
+    candidates.push(sortByHueThenLightness(colorData));
+    candidates.push(nearestNeighborBest(colorData));
+  } else {
+    // Medium hue spread: try multiple strategies
+    candidates.push(sortByHue(colorData));
+    candidates.push(sortByLightness(colorData, true));
+    candidates.push(sortByLightness(colorData, false));
+    candidates.push(nearestNeighborBest(colorData));
   }
   
-  return sorted.map(c => c.hex);
+  // Apply 2-opt improvement to each candidate
+  candidates = candidates.map(c => twoOptImprove(c, 50));
+  
+  // Pick the best ordering
+  let bestCandidate = candidates[0];
+  let bestScore = calculateOrderingSmoothness(candidates[0]);
+  
+  for (let i = 1; i < candidates.length; i++) {
+    const score = calculateOrderingSmoothness(candidates[i]);
+    if (score < bestScore) {
+      bestScore = score;
+      bestCandidate = candidates[i];
+    }
+  }
+  
+  return bestCandidate.map(c => c.hex);
 };
 
 const relativeLuminance = (hex) => {
