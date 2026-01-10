@@ -256,8 +256,8 @@ const generateCohesiveVariationsOklch = (hues, mood, count, rng) => {
       C = random(0.04, 0.09, rng);
       L = random(0.85, 0.94, rng);
     } else if (mood === 'vibrant') {
-      C = random(0.14, 0.26, rng);
-      L = random(0.50, 0.72, rng);
+      C = random(0.14, 0.36, rng);
+      L = random(0.50, 0.82, rng);
     } else if (mood === 'muted') {
       C = random(0.02, 0.06, rng);
       L = random(0.40, 0.70, rng);
@@ -289,6 +289,7 @@ const generateCohesiveVariationsOklch = (hues, mood, count, rng) => {
 
 export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}, rng = Math.random) => {
   let harmonyMode = mode;
+  let activeMood = constraints.mood || 'any'; // Default to existing mood
 
   if (mode === 'auto') {
     const roll = rng();
@@ -313,10 +314,19 @@ export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}
       else if (roll < 0.95) harmonyMode = 'splitComplementary';
       else harmonyMode = 'triadic';
     }
+
+    if (!constraints.mood) {
+      const moodRoll = rng();
+      if (moodRoll < 0.20) activeMood = 'vibrant';
+      else if (moodRoll < 0.40) activeMood = 'pastel';
+      else if (moodRoll < 0.60) activeMood = 'muted';
+      else if (moodRoll < 0.75) activeMood = 'dark';
+      else activeMood = 'any'; // The default "balanced" strategy
+    }
   }
 
   const hues = generateHarmoniousHues(harmonyMode, count, constraints, rng);
-  const clValues = generateCohesiveVariationsOklch(hues, constraints.mood || 'any', count, rng);
+  const clValues = generateCohesiveVariationsOklch(hues, activeMood, count, rng);
 
   let palette = [];
   for (let i = 0; i < count; i++) {
