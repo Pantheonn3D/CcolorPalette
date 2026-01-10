@@ -452,25 +452,21 @@ const generateCohesiveVariationsOklch = (hues, mood, count, rng) => {
       targetChromaRatio = { min: 0.25, max: 0.45 };
       lightnessRange = { min: 0.82, max: 0.94 };
       break;
-    case 'vibrant':
-      targetChromaRatio = { min: 0.70, max: 0.90 };
-      lightnessRange = { min: 0.45, max: 0.78 };
-      break;
-    case 'muted':
-      targetChromaRatio = { min: 0.15, max: 0.35 };
-      lightnessRange = { min: 0.40, max: 0.70 };
-      break;
-    case 'dark':
-      targetChromaRatio = { min: 0.35, max: 0.65 };
-      lightnessRange = { min: 0.15, max: 0.40 };
-      break;
-    case 'light':
-      targetChromaRatio = { min: 0.30, max: 0.55 };
-      lightnessRange = { min: 0.75, max: 0.92 };
-      break;
-    default: // 'any' or balanced
-      targetChromaRatio = { min: 0.40, max: 0.70 };
-      lightnessRange = { min: 0.30, max: 0.85 };
+      case 'vibrant':
+        targetChromaRatio = { min: 0.80, max: 0.98 }; // Was 0.70-0.90
+        lightnessRange = { min: 0.48, max: 0.80 };
+        break;
+      case 'pastel':
+        targetChromaRatio = { min: 0.35, max: 0.55 }; // Was 0.25-0.45 - richer pastels
+        lightnessRange = { min: 0.80, max: 0.92 };
+        break;
+      case 'muted':
+        targetChromaRatio = { min: 0.20, max: 0.45 }; // Was 0.15-0.35 - not so dead
+        lightnessRange = { min: 0.38, max: 0.68 };
+        break;
+      default: // 'any'
+        targetChromaRatio = { min: 0.50, max: 0.85 }; // Was 0.40-0.70
+        lightnessRange = { min: 0.28, max: 0.88 };
   }
   
   // Generate base lightness values with good distribution
@@ -623,15 +619,15 @@ export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}
     if (!constraints.mood || constraints.mood === 'any') {
       const moodRoll = rng();
     
-      if (moodRoll < 0.30) {
+      if (moodRoll < 0.45) {        // Was 0.30 - more vibrant
         activeMood = 'vibrant';
-      } else if (moodRoll < 0.50) {
+      } else if (moodRoll < 0.58) { // Was 0.50 - less muted
         activeMood = 'muted';
-      } else if (moodRoll < 0.65) {
+      } else if (moodRoll < 0.72) { // Was 0.65
         activeMood = 'pastel';
-      } else if (moodRoll < 0.80) {
+      } else if (moodRoll < 0.85) { // Was 0.80
         activeMood = 'dark';
-      } else if (moodRoll < 0.90) {
+      } else if (moodRoll < 0.93) {
         activeMood = 'light';
       } else {
         activeMood = 'any';
