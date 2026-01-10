@@ -239,25 +239,102 @@ ${hexColors.map((c, i) => `  '${getName(i)}': ${c},`).join('\n')}
       label: 'SVG',
       description: 'Vector graphic',
       action: () => {
+        if (!hexColors?.length) return;
+    
         const width = 1200;
         const height = 630;
         const colorWidth = width / hexColors.length;
-
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
-${hexColors.map((c, i) => `  <rect x="${i * colorWidth}" y="0" width="${colorWidth}" height="${height}" fill="${c}"/>`).join('\n')}
-${hexColors.map((c, i) => {
-  const hsl = hexToHsl(c);
-  const textColor = hsl.l > 60 ? '#000000' : '#FFFFFF';
-  const x = i * colorWidth + colorWidth / 2;
-  return `  <text x="${x}" y="${height - 30}" text-anchor="middle" fill="${textColor}" font-family="monospace" font-size="14" font-weight="bold">${c}</text>`;
-}).join('\n')}
-</svg>`;
-
+        const cornerRadius = 16;
+    
+        const lastColor = hexColors[hexColors.length - 1] || '#000000';
+        const lastHsl = hexToHsl(lastColor);
+        const wmIsLight = lastHsl.l > 55;
+        const wmFill = wmIsLight ? '#000000' : '#FFFFFF';
+        const wmFillOpacity = wmIsLight ? '0.80' : '0.95';
+        const wmStroke = wmIsLight ? '#FFFFFF' : '#000000';
+        const wmStrokeOpacity = '0.25';
+    
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <defs>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&amp;display=swap');
+          .hex-label {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+          }
+          .watermark {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 500;
+          }
+        </style>
+        ${
+          cornerRadius > 0
+            ? `<clipPath id="rounded" clipPathUnits="userSpaceOnUse">
+          <rect x="0" y="0" width="${width}" height="${height}" rx="${cornerRadius}" ry="${cornerRadius}" />
+        </clipPath>`
+            : ''
+        }
+      </defs>
+    
+      <g ${cornerRadius > 0 ? 'clip-path="url(#rounded)"' : ''}>
+    ${hexColors
+      .map(
+        (c, i) =>
+          `    <rect x="${i * colorWidth}" y="0" width="${colorWidth + 1}" height="${height}" fill="${c}" shape-rendering="crispEdges"/>`
+      )
+      .join('\n')}
+    
+    ${hexColors
+      .map((c, i) => {
+        const hsl = hexToHsl(c);
+        const isLight = hsl.l > 55;
+    
+        const textFill = isLight ? '#000000' : '#FFFFFF';
+        const textOpacity = isLight ? '0.85' : '0.95';
+        const textStroke = isLight ? '#FFFFFF' : '#000000';
+        const textStrokeOpacity = '0.18';
+    
+        const x = i * colorWidth + colorWidth / 2;
+        const hexText = c.replace('#', '');
+    
+        return `    <text
+          x="${x}"
+          y="${height / 2 + 8}"
+          text-anchor="middle"
+          class="hex-label"
+          font-size="32"
+          fill="${textFill}"
+          fill-opacity="${textOpacity}"
+          stroke="${textStroke}"
+          stroke-opacity="${textStrokeOpacity}"
+          stroke-width="3"
+          paint-order="stroke fill"
+        >${hexText}</text>`;
+      })
+      .join('\n')}
+    
+        <text
+          x="${width - 24}"
+          y="${height - 20}"
+          text-anchor="end"
+          class="watermark"
+          font-size="24"
+          fill="${wmFill}"
+          fill-opacity="${wmFillOpacity}"
+          stroke="${wmStroke}"
+          stroke-opacity="${wmStrokeOpacity}"
+          stroke-width="4"
+          paint-order="stroke fill"
+        >ccolorpalette.com</text>
+      </g>
+    </svg>`;
+    
         const blob = new Blob([svg], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `palette-${Date.now()}.svg`;
+        a.download = `palette-${hexColors.map(c => c.replace('#', '')).join('-')}.svg`;
         a.click();
         URL.revokeObjectURL(url);
         showCopied('svg');
@@ -268,43 +345,91 @@ ${hexColors.map((c, i) => {
       icon: Image,
       label: 'PNG',
       description: 'Social preview',
-      action: () => {
+      action: async () => {
+        if (!hexColors?.length) return;
+    
         const canvas = document.createElement('canvas');
-        canvas.width = 1200;
-        canvas.height = 630;
+        const scale = 2;
+        canvas.width = 1200 * scale;
+        canvas.height = 630 * scale;
+    
         const ctx = canvas.getContext('2d');
-        const colorWidth = canvas.width / hexColors.length;
-
+        if (!ctx) return;
+    
+        ctx.scale(scale, scale);
+    
+        const width = 1200;
+        const height = 630;
+        const colorWidth = width / hexColors.length;
+    
+        // Draw color blocks
         hexColors.forEach((color, i) => {
           ctx.fillStyle = color;
-          ctx.fillRect(i * colorWidth, 0, colorWidth, canvas.height);
+          ctx.fillRect(i * colorWidth, 0, colorWidth + 1, height);
         });
-
-        ctx.font = 'bold 16px monospace';
-        ctx.textAlign = 'center';
+    
+        // Load font before drawing text
+        try {
+          await document.fonts.load('600 32px "Inter"');
+          await document.fonts.load('500 24px "Inter"');
+        } catch (e) {
+          // fallback fonts will be used
+        }
+    
+        // Draw hex labels
         hexColors.forEach((color, i) => {
           const hsl = hexToHsl(color);
-          ctx.fillStyle = hsl.l > 60 ? '#000000' : '#FFFFFF';
+          const isLight = hsl.l > 55;
+    
           const x = i * colorWidth + colorWidth / 2;
-          ctx.fillText(color, x, canvas.height - 30);
+          const y = height / 2;
+          const hexText = color.replace('#', '');
+    
+          ctx.font = '600 32px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+    
+          // subtle outline for contrast
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.18)';
+          ctx.strokeText(hexText, x, y);
+    
+          ctx.fillStyle = isLight ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.95)';
+          ctx.fillText(hexText, x, y);
         });
-
-        ctx.font = '12px sans-serif';
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    
+        // Watermark that adapts to the last swatch
+        const lastColor = hexColors[hexColors.length - 1] || '#000000';
+        const lastHsl = hexToHsl(lastColor);
+        const wmIsLight = lastHsl.l > 55;
+    
+        const wmX = width - 32;
+        const wmY = height - 28;
+    
+        ctx.font = '500 24px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText('ccolorpalette.com', canvas.width - 20, canvas.height - 12);
-
+        ctx.textBaseline = 'bottom';
+    
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = wmIsLight ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.25)';
+        ctx.strokeText('ccolorpalette.com', wmX, wmY);
+    
+        ctx.fillStyle = wmIsLight ? 'rgba(0, 0, 0, 0.80)' : 'rgba(255, 255, 255, 0.95)';
+        ctx.fillText('ccolorpalette.com', wmX, wmY);
+    
         canvas.toBlob((blob) => {
+          if (!blob) return;
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `palette-${Date.now()}.png`;
+          a.download = `palette-${hexColors.map(c => c.replace('#', '')).join('-')}.png`;
           a.click();
           URL.revokeObjectURL(url);
-        });
+        }, 'image/png');
+    
         showCopied('png');
       },
-    },
+    },    
   ];
 
   return (

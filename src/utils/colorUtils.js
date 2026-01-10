@@ -520,11 +520,21 @@ const generateHarmoniousHues = (mode, count, constraints, rng) => {
   const hues = [];
   const jitter = (amount = 15) => random(-amount, amount, rng);
   
+// Replace the avoidDeadZones function in generateHarmoniousHues
   const avoidDeadZones = (hue) => {
     const normalized = ((hue % 360) + 360) % 360;
-    if (normalized > 68 && normalized < 78) {
-      return normalized < 73 ? 65 : 80;
+    
+    // Muddy yellow-green zone (65-85) - push to cleaner yellow or green
+    if (normalized > 62 && normalized < 88) {
+      return normalized < 75 ? 58 : 92;
     }
+    
+    // Muddy olive/brown zone (40-55) at certain conditions handled elsewhere
+    // Muddy yellow-brown (42-52) - push to cleaner orange or yellow
+    if (normalized > 42 && normalized < 52) {
+      return normalized < 47 ? 38 : 55;
+    }
+    
     return normalized;
   };
   
@@ -772,6 +782,86 @@ const enforceMinimumDistance = (colors, minDistance = 0.08, maxAttempts = 50) =>
     }
     
     if (allGood) break;
+  }
+  
+  return result;
+};
+
+// Add this new function after enforceMinimumDistance
+const enforcePaletteCohesion = (colors, maxAttempts = 30) => {
+  if (colors.length <= 2) return colors;
+  
+  const result = [...colors];
+  const colorData = result.map(hex => ({
+    hex,
+    oklch: hexToOklch(hex),
+    oklab: hexToOklab(hex),
+  }));
+  
+  // Check for "outlier" colors that don't fit the palette
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    let worstIndex = -1;
+    let worstScore = 0;
+    
+    for (let i = 0; i < colorData.length; i++) {
+      // Calculate how "isolated" this color is from its neighbors
+      const prevIdx = i > 0 ? i - 1 : colorData.length - 1;
+      const nextIdx = i < colorData.length - 1 ? i + 1 : 0;
+      
+      const distToPrev = deltaEOK(colorData[i].oklab, colorData[prevIdx].oklab);
+      const distToNext = deltaEOK(colorData[i].oklab, colorData[nextIdx].oklab);
+      
+      // Also check hue isolation
+      const hueDiffPrev = Math.abs(colorData[i].oklch.h - colorData[prevIdx].oklch.h);
+      const hueDiffNext = Math.abs(colorData[i].oklch.h - colorData[nextIdx].oklch.h);
+      const normalizedHuePrev = hueDiffPrev > 180 ? 360 - hueDiffPrev : hueDiffPrev;
+      const normalizedHueNext = hueDiffNext > 180 ? 360 - hueDiffNext : hueDiffNext;
+      
+      // A color is an "outlier" if it has large hue jumps on BOTH sides
+      const minHueJump = Math.min(normalizedHuePrev, normalizedHueNext);
+      const avgHueJump = (normalizedHuePrev + normalizedHueNext) / 2;
+      
+      // Score: high if both neighbors are far away in hue
+      const isolationScore = minHueJump > 60 ? avgHueJump : 0;
+      
+      if (isolationScore > worstScore) {
+        worstScore = isolationScore;
+        worstIndex = i;
+      }
+    }
+    
+    // If we found an outlier with significant isolation, fix it
+    if (worstIndex >= 0 && worstScore > 80) {
+      const prevIdx = worstIndex > 0 ? worstIndex - 1 : colorData.length - 1;
+      const nextIdx = worstIndex < colorData.length - 1 ? worstIndex + 1 : 0;
+      
+      // Blend the outlier toward its neighbors
+      const prevHue = colorData[prevIdx].oklch.h;
+      const nextHue = colorData[nextIdx].oklch.h;
+      
+      // Find midpoint hue (handling wrap-around)
+      let h1 = prevHue, h2 = nextHue;
+      let diff = h2 - h1;
+      if (diff > 180) h2 -= 360;
+      if (diff < -180) h2 += 360;
+      let newHue = (h1 + h2) / 2;
+      if (newHue < 0) newHue += 360;
+      if (newHue >= 360) newHue -= 360;
+      
+      // Keep similar lightness and chroma, just fix the hue
+      const newL = colorData[worstIndex].oklch.L;
+      const newC = colorData[worstIndex].oklch.C;
+      
+      const newHex = oklchToHex(newL, newC, newHue);
+      result[worstIndex] = newHex;
+      colorData[worstIndex] = {
+        hex: newHex,
+        oklch: hexToOklch(newHex),
+        oklab: hexToOklab(newHex),
+      };
+    } else {
+      break; // No more outliers to fix
+    }
   }
   
   return result;
