@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google-analytics/data": "^5.2.1",
     "@resvg/resvg-js": "^2.6.2",
     "chroma-js": "^3.2.0",
     "color-name-list": "^14.15.1",
+    "dotenv": "^17.2.3",
     "lucide-react": "^0.562.0",
     "nearest-color": "^0.4.4",
     "react": "^19.2.3",
