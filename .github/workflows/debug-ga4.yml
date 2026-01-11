@@ -1,0 +1,24 @@
+name: Manual Debug GA4
+
+on:
+  workflow_dispatch: # Adds a "Run" button
+
+jobs:
+  debug-connection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      
+      - name: Install Dependencies
+        run: npm install
+        
+      - name: Run Debug Script
+        run: node scripts/debug-ga4.cjs
+        env:
+          # Pass the secrets securely to the script
+          GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
