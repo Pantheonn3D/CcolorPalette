@@ -4,7 +4,13 @@ import { ArrowLeft, Search } from 'lucide-react';
 import { DIRECTORY_PALETTES } from '../../data/paletteDirectory';
 import logo from '../../assets/Frame4ico.png';
 import './ExplorePage.css';
+import { Helmet } from 'react-helmet-async';
 import { trackEvent } from '../../utils/analytics';
+
+
+<Helmet>
+  <title>Explore All Color Palettes | CColorPalette Directory</title>
+</Helmet>
 
 function ExplorePage() {
   const [searchTerm, setSearchTerm] = useState('');

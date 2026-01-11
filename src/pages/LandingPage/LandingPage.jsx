@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../assets/Frame4ico.png';
 import { trackEvent } from '../../utils/analytics';
+import { Helmet } from 'react-helmet-async';
 import {
   // Only import icons we actually use
   Sparkles,
@@ -55,6 +56,10 @@ import {
   SwatchBook,
 } from 'lucide-react';
 import './LandingPage.css';
+
+<Helmet>
+  <title>CColorPalette - The Best Free Color Tool for Designers & Developers</title>
+</Helmet>
 
 // FAQ Data
 const FAQ_DATA = [

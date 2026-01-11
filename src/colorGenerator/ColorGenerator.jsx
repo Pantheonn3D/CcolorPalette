@@ -826,76 +826,12 @@ useEffect(() => {
     [currentHexes, generationMode, constraints.mood]
   );
 
-  const currentCanonical = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    const hexPath = colors.map(c => c.hex.replace('#', '')).join('-');
-    return `${window.location.origin}/${hexPath}`;
-  }, [colors]);
   const contentSections = useMemo(() => formatContentSections(seoData.content), [seoData.content]);
-
-  const ogImageUrl = useMemo(() => {
-    if (typeof window === 'undefined') return 'https://ccolorpalette.com/og-image.png'; // Fallback
-    const hexPath = colors.map(c => c.hex.replace('#', '')).join('-');
-    // Point to the Netlify function
-    return `${window.location.origin}/.netlify/functions/og-image?colors=${hexPath}`;
-  }, [colors]);
-
-  const structuredData = useMemo(() => {
-    const colorItems = colors.map((c, index) => {
-      const rgb = hexToRgb(c.hex);
-      const hsl = hexToHsl(c.hex);
-      return {
-        '@type': 'Thing',
-        name: `Color ${index + 1}`,
-        description: `${c.hex} - RGB(${rgb.r}, ${rgb.g}, ${rgb.b}) - HSL(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)`,
-        identifier: c.hex,
-      };
-    });
-
-    return {
-      '@context': 'https://schema.org',
-      '@type': 'CreativeWork',
-      name: seoData.title,
-      description: seoData.meta,
-      url: currentCanonical,
-      creator: { '@type': 'Organization', name: 'CcolorPalette' },
-      keywords: seoData.keywords?.join(', ') || '',
-      about: colorItems,
-      additionalProperty: seoData.traits
-        ? [
-            { '@type': 'PropertyValue', name: 'Color Harmony', value: seoData.traits.harmony },
-            { '@type': 'PropertyValue', name: 'Color Temperature', value: seoData.traits.temperature },
-            { '@type': 'PropertyValue', name: 'Saturation Level', value: seoData.traits.saturation },
-            { '@type': 'PropertyValue', name: 'Primary Hue', value: seoData.traits.primaryHue },
-            { '@type': 'PropertyValue', name: 'Accessibility Score', value: seoData.traits.accessibilityScore },
-          ]
-        : [],
-    };
-  }, [colors, seoData, currentCanonical]);
 
   return (
     <div className="app-wrapper">
       <Helmet>
-        <title>{seoData.title} | CcolorPalette</title>
-        <meta name="description" content={seoData.meta} />
-        <link rel="canonical" href={currentCanonical} />
-        {seoData.keywords?.length > 0 && (
-          <meta name="keywords" content={seoData.keywords.slice(0, 10).join(', ')} />
-        )}
-        <meta property="og:image" content={ogImageUrl} />
-        <meta property="og:description" content={seoData.meta} />
-        <meta property="og:url" content={currentCanonical} />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="CcolorPalette" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content={ogImageUrl} />
-        <meta name="twitter:title" content={seoData.title} />
-        <meta name="twitter:description" content={seoData.meta} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta name="robots" content="index, follow" />
-        <meta name="author" content="CcolorPalette" />
-        <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
+        <title>{seoData.title} | CColorPalette</title>
       </Helmet>
 
       <div className="page-section visible">

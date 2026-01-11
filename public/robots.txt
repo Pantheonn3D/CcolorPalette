@@ -1,3 +1,8 @@
 User-agent: *
 Allow: /
+
+# Sitemap location
 Sitemap: https://ccolorpalette.com/sitemap.xml
+
+# Block only truly private paths
+Disallow: /.netlify/
