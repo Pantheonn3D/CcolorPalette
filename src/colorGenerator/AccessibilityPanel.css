@@ -95,7 +95,7 @@
     cursor: pointer;
     transition: all var(--transition-fast);
   }
-  
+   
   .a11y-mode-btn:hover {
     background: var(--color-bg-hover);
   }
