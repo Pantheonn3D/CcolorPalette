@@ -36,7 +36,6 @@ import {
   generateShades,
   generateRichSEO,
   hexToHsl,
-  hexToOklch,
 } from '../utils/colorUtils';
 
 // Constants
@@ -46,7 +45,6 @@ const MIN_COL_PX = 128;
 const MOBILE_BREAKPOINT = 768;
 const MOBILE_SHADE_COUNT = 6;
 const DESKTOP_SHADE_COUNT = 20;
-const HEADER_OFFSET = 100;
 
 // Helpers
 const generateId = () => Math.random().toString(36).substring(2, 11);
@@ -62,17 +60,11 @@ const isMobileView = () => window.innerWidth <= MOBILE_BREAKPOINT;
 
 const getMaxOpenPanels = () => (isMobileView() ? 1 : 3);
 
-const hexToRgb = (hex) => {
-  let cleanHex = hex.replace('#', '');
-  if (cleanHex.length === 3) {
-    cleanHex = cleanHex.split('').map(char => char + char).join('');
-  }
-  return {
-    r: parseInt(cleanHex.slice(0, 2), 16),
-    g: parseInt(cleanHex.slice(2, 4), 16),
-    b: parseInt(cleanHex.slice(4, 6), 16),
-  };
-};
+const hexToRgb = (hex) => ({
+  r: parseInt(hex.slice(1, 3), 16),
+  g: parseInt(hex.slice(3, 5), 16),
+  b: parseInt(hex.slice(5, 7), 16),
+});
 
 const formatContentSections = (content) => {
   if (!content) return [];
@@ -90,16 +82,10 @@ const formatContentSections = (content) => {
   });
 };
 
-const isValidHex = (hex) => {
-  const cleanHex = hex.replace(/[^0-9A-F]/gi, '');
-  return /^([0-9A-F]{3}){1,2}$/i.test(cleanHex);
-};
-
 function ColorGenerator() {
   // Refs
   const containerRef = useRef(null);
   const colorsAreaRef = useRef(null);
-  const removingIdsRef = useRef(new Set());
 
   // Layout State
   const [stackColors, setStackColors] = useState(false);
@@ -120,8 +106,10 @@ function ColorGenerator() {
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
+  // FIX 1: Create a ref to track the live history index
   const historyIndexRef = useRef(historyIndex);
 
+  // FIX 2: Keep the ref synced with state
   useEffect(() => {
     historyIndexRef.current = historyIndex;
   }, [historyIndex]);
@@ -149,9 +137,8 @@ function ColorGenerator() {
   const [removingId, setRemovingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [activeShadeId, setActiveShadeId] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-  const [editValue, setEditValue] = useState('');
-  const [hexError, setHexError] = useState(false);
+  const [editingId, setEditingId] = useState(null); // ID of the color being edited
+  const [editValue, setEditValue] = useState('');   // Temporary value of the input
 
   // Drag State
   const [dragState, setDragState] = useState(null);
@@ -216,9 +203,10 @@ function ColorGenerator() {
         const currentIndex = historyIndexRef.current;
         const newHistory = prev.slice(0, currentIndex + 1);
         
+        // NEW: Store as an object so HistoryPanel can see the vision mode
         newHistory.push({
           colors: newColors,
-          visionMode: colorBlindMode
+          visionMode: colorBlindMode // This captures the current state
         });
         
         if (newHistory.length > MAX_HISTORY) {
@@ -232,7 +220,7 @@ function ColorGenerator() {
         return nextIndex >= MAX_HISTORY ? MAX_HISTORY - 1 : nextIndex;
       });
     },
-    [colorBlindMode]
+    [historyIndex, colorBlindMode] // Added colorBlindMode to dependencies
   );
 
   const undo = useCallback(() => {
@@ -258,7 +246,7 @@ function ColorGenerator() {
     [history.length]
   );
 
-  // Palette Generation - Enhanced with locked color analysis
+  // Palette Generation
   const generatePalette = useCallback(
     (count = 5) => {
       const lockedColors = colors.filter((c) => c.locked);
@@ -266,44 +254,17 @@ function ColorGenerator() {
 
       if (unlockedCount <= 0) return;
 
+      // FIX: Calculate a "seed" from the locked colors
       let generationConstraints = { ...constraints };
       
       if (lockedColors.length > 0) {
-        // Analyze ALL locked colors
-        const lockedOklchs = lockedColors.map(c => hexToOklch(c.hex));
-        const lockedHsls = lockedColors.map(c => hexToHsl(c.hex));
-        
-        // Calculate averages from locked colors
-        const avgChroma = lockedOklchs.reduce((a, c) => a + c.C, 0) / lockedOklchs.length;
-        const avgLightness = lockedOklchs.reduce((a, c) => a + c.L, 0) / lockedOklchs.length;
-        const avgHue = lockedHsls[0].h;
-        
-        // Determine mood from locked colors
-        let inferredMood = 'any';
-        if (avgChroma > 0.15 && avgLightness > 0.45 && avgLightness < 0.80) {
-          inferredMood = 'vibrant';
-        } else if (avgChroma < 0.08) {
-          inferredMood = 'muted';
-        } else if (avgChroma < 0.13 && avgLightness > 0.75) {
-          inferredMood = 'pastel';
-        } else if (avgLightness < 0.35) {
-          inferredMood = 'dark';
-        } else if (avgLightness > 0.75) {
-          inferredMood = 'light';
-        }
-        
-        // Pass all locked color data to the generator
-        generationConstraints.baseHue = avgHue;
-        generationConstraints.lockedColors = lockedColors.map(c => c.hex);
-        generationConstraints.targetChroma = avgChroma;
-        generationConstraints.targetLightness = avgLightness;
-        
-        // Only override mood if user hasn't explicitly set one
-        if (!constraints.mood || constraints.mood === 'any') {
-          generationConstraints.mood = inferredMood;
-        }
+        // Use the first locked color as the anchor for harmony
+        // (You could also average them, but using the first is safer)
+        const lockedHsl = hexToHsl(lockedColors[0].hex);
+        generationConstraints.baseHue = lockedHsl.h;
       }
 
+      // Pass the updated constraints
       const newPalette = generateRandomPalette(generationMode, unlockedCount, generationConstraints);
       
       const newColors = newPalette.map((hex) => ({
@@ -360,25 +321,18 @@ function ColorGenerator() {
   };
 
   const removeColor = (id) => {
-    if (colors.length <= 2) return;
-    if (removingIdsRef.current.has(id)) return;
-    
     trackEvent('remove_color', { current_count: colors.length });
-    removingIdsRef.current.add(id);
+    if (colors.length <= 2) return;
+
     setRemovingId(id);
-    
     setTimeout(() => {
       updateColors(colors.filter((c) => c.id !== id));
       setRemovingId(null);
-      removingIdsRef.current.delete(id);
     }, 350);
   };
 
   const toggleLock = (id) => {
-    const color = colors.find(c => c.id === id);
-    if (!color) return;
-    
-    const isLocking = !color.locked;
+    const isLocking = !colors.find(c => c.id === id).locked;
     trackEvent('toggle_lock', { action: isLocking ? 'lock' : 'unlock' });
     updateColors(colors.map((c) => (c.id === id ? { ...c, locked: !c.locked } : c)));
   };
@@ -393,45 +347,42 @@ function ColorGenerator() {
     }
   };
 
-  // Hex Editing Handlers
+  // --- Hex Editing Handlers ---
+
   const handleHexClick = (id, currentHex, e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent dragging or other card clicks
     setEditingId(id);
-    setEditValue(currentHex.replace('#', ''));
-    setHexError(false);
+    setEditValue(currentHex.replace('#', '')); // Show without hash for easier typing
   };
 
   const commitHexChange = (id) => {
     if (!editValue) {
       setEditingId(null);
-      setHexError(false);
       return;
     }
 
+    // Validate Hex (allow 3 or 6 chars)
+    const validHexPattern = /^([0-9A-F]{3}){1,2}$/i;
     let cleanHex = editValue.replace(/[^0-9A-F]/gi, '').toUpperCase();
 
-    if (isValidHex(cleanHex)) {
+    if (validHexPattern.test(cleanHex)) {
+      // Expand 3-char hex to 6-char
       if (cleanHex.length === 3) {
         cleanHex = cleanHex.split('').map(char => char + char).join('');
       }
       
       const newFullHex = `#${cleanHex}`;
       
+      // Update state: Set new hex AND lock the color
       updateColors(colors.map(c => {
         if (c.id === id) {
-          return { ...c, hex: newFullHex, locked: true };
+          return { ...c, hex: newFullHex, locked: true }; // Lock it!
         }
         return c;
       }));
-      
-      setHexError(false);
-    } else {
-      setHexError(true);
-      setTimeout(() => {
-        setHexError(false);
-      }, 1000);
-    }
+    } 
     
+    // Reset editing state
     setEditingId(null);
     setEditValue('');
   };
@@ -441,9 +392,9 @@ function ColorGenerator() {
       e.preventDefault();
       commitHexChange(id);
     } else if (e.key === 'Escape') {
+      // Cancel editing
       setEditingId(null);
       setEditValue('');
-      setHexError(false);
     }
   };
 
@@ -482,124 +433,138 @@ function ColorGenerator() {
     };
   }, [activeShadeId]);
 
-  // Column Size Calculation
-  const getColumnSize = useCallback(() => {
-    if (!containerRef.current) return 0;
+  // Constants - add this new one
+const HEADER_OFFSET = 100; // Height reserved for floating header in stacked mode
 
-    const vertical = isVerticalLayout();
-    const isMobile = isMobileView();
 
-    if (vertical) {
-      const colorsArea = colorsAreaRef.current;
-      if (!colorsArea) return 0;
+// Updated getColumnSize function
+const getColumnSize = useCallback(() => {
+  if (!containerRef.current) return 0;
 
-      const areaHeight = colorsArea.offsetHeight;
+  const vertical = isVerticalLayout();
+  const isMobile = isMobileView();
 
-      if (stackColors && !isMobile && colors.length > 0) {
-        const effectiveHeight = areaHeight - HEADER_OFFSET;
-        return effectiveHeight / colors.length;
-      }
+  if (vertical) {
+    const colorsArea = colorsAreaRef.current;
+    if (!colorsArea) return 0;
 
-      return areaHeight / colors.length;
-    } else {
-      let panelWidth = 0;
-      if (isMethodOpen) panelWidth += 240;
-      if (isA11yOpen) panelWidth += 280;
-      if (isHistoryOpen) panelWidth += 260;
-      if (isExportOpen) panelWidth += 320;
-      if (isBookmarkOpen) panelWidth += 280;
+    const areaHeight = colorsArea.offsetHeight;
 
-      const availableWidth = containerRef.current.offsetWidth - panelWidth;
-      return availableWidth / colors.length;
-    }
-  }, [
-    colors.length,
-    isMethodOpen,
-    isA11yOpen,
-    isHistoryOpen,
-    isExportOpen,
-    isBookmarkOpen,
-    isVerticalLayout,
-    stackColors,
-  ]);
-
-  // Drag Handlers
-  const handleDragStart = (e, id, index) => {
-    if (e.type === 'touchstart') {
-      e.preventDefault();
+    // On desktop stacked mode, the first color has extra padding for the header
+    // We need to calculate the "uniform" size for drag calculations
+    if (stackColors && !isMobile && colors.length > 0) {
+      // Subtract the header offset from total height, then divide evenly
+      const effectiveHeight = areaHeight - HEADER_OFFSET;
+      return effectiveHeight / colors.length;
     }
 
-    const columnSize = getColumnSize();
-    const vertical = isVerticalLayout();
-    const isMobile = isMobileView();
+    // Mobile - all colors are uniform
+    return areaHeight / colors.length;
+  } else {
+    // Horizontal mode
+    let panelWidth = 0;
+    if (isMethodOpen) panelWidth += 240;
+    if (isA11yOpen) panelWidth += 280;
+    if (isHistoryOpen) panelWidth += 260;
+    if (isExportOpen) panelWidth += 320;
+    if (isBookmarkOpen) panelWidth += 280;
+
+    const availableWidth = containerRef.current.offsetWidth - panelWidth;
+    return availableWidth / colors.length;
+  }
+}, [
+  colors.length,
+  isMethodOpen,
+  isA11yOpen,
+  isHistoryOpen,
+  isExportOpen,
+  isBookmarkOpen,
+  isVerticalLayout,
+  stackColors,
+]);
+
+// Updated handleDragStart to account for header offset
+const handleDragStart = (e, id, index) => {
+  if (e.type === 'touchstart') e.preventDefault();
+
+  const columnSize = getColumnSize();
+  const vertical = isVerticalLayout();
+  const isMobile = isMobileView();
+
+  let clientPos;
+  if (e.type === 'touchstart') {
+    clientPos = vertical ? e.touches[0].clientY : e.touches[0].clientX;
+  } else {
+    e.preventDefault();
+    clientPos = vertical ? e.clientY : e.clientX;
+  }
+
+  // In desktop stacked mode, adjust startPos to account for header offset
+  // This makes the drag math work correctly
+  let adjustedStartPos = clientPos;
+  if (stackColors && !isMobile && vertical) {
+    // The first color starts after the header offset
+    // Normalize the position as if all colors were uniform from the top
+    const colorsArea = colorsAreaRef.current;
+    if (colorsArea) {
+      const areaRect = colorsArea.getBoundingClientRect();
+      const relativePos = clientPos - areaRect.top - HEADER_OFFSET;
+      adjustedStartPos = areaRect.top + relativePos;
+    }
+  }
+
+  setDragState({
+    id,
+    startIndex: index,
+    currentIndex: index,
+    startPos: adjustedStartPos,
+    currentPos: adjustedStartPos,
+    columnSize,
+    isMobile: vertical,
+    isDesktopStacked: stackColors && !isMobile && vertical,
+    areaTop: colorsAreaRef.current?.getBoundingClientRect().top || 0,
+  });
+};
+
+// Updated handleMouseMove to handle desktop stacked mode correctly
+const handleMouseMove = useCallback(
+  (e) => {
+    if (!dragState || isSnapping) return;
+
+    const { startIndex, columnSize, isMobile, isDesktopStacked, areaTop } = dragState;
 
     let clientPos;
-    if (e.type === 'touchstart') {
-      clientPos = vertical ? e.touches[0].clientY : e.touches[0].clientX;
+    if (e.type === 'touchmove') {
+      clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
     } else {
-      e.preventDefault();
-      clientPos = vertical ? e.clientY : e.clientX;
+      clientPos = isMobile ? e.clientY : e.clientX;
     }
 
-    let adjustedStartPos = clientPos;
-    if (stackColors && !isMobile && vertical) {
-      const colorsArea = colorsAreaRef.current;
-      if (colorsArea) {
-        const areaRect = colorsArea.getBoundingClientRect();
-        const relativePos = clientPos - areaRect.top - HEADER_OFFSET;
-        adjustedStartPos = areaRect.top + relativePos;
-      }
+    // Adjust position for desktop stacked mode
+    let adjustedCurrentPos = clientPos;
+    if (isDesktopStacked) {
+      const relativePos = clientPos - areaTop - HEADER_OFFSET;
+      adjustedCurrentPos = areaTop + relativePos;
     }
 
-    setDragState({
-      id,
-      startIndex: index,
-      currentIndex: index,
-      startPos: adjustedStartPos,
-      currentPos: adjustedStartPos,
-      columnSize,
-      isMobile: vertical,
-      isDesktopStacked: stackColors && !isMobile && vertical,
-      areaTop: colorsAreaRef.current?.getBoundingClientRect().top || 0,
-    });
-  };
+    let delta = adjustedCurrentPos - dragState.startPos;
 
-  const handleMouseMove = useCallback(
-    (e) => {
-      if (!dragState || isSnapping) return;
+    // Clamp delta to valid range
+    const maxNegativeOffset = -startIndex * columnSize;
+    const maxPositiveOffset = (colors.length - 1 - startIndex) * columnSize;
+    delta = Math.max(maxNegativeOffset, Math.min(maxPositiveOffset, delta));
 
-      const { startIndex, columnSize, isMobile, isDesktopStacked, areaTop } = dragState;
+    const indexOffset = Math.round(delta / columnSize);
+    const newIndex = Math.max(0, Math.min(colors.length - 1, startIndex + indexOffset));
 
-      let clientPos;
-      if (e.type === 'touchmove') {
-        clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
-      } else {
-        clientPos = isMobile ? e.clientY : e.clientX;
-      }
-
-      let adjustedCurrentPos = clientPos;
-      if (isDesktopStacked) {
-        const relativePos = clientPos - areaTop - HEADER_OFFSET;
-        adjustedCurrentPos = areaTop + relativePos;
-      }
-
-      let delta = adjustedCurrentPos - dragState.startPos;
-
-      const maxNegativeOffset = -startIndex * columnSize;
-      const maxPositiveOffset = (colors.length - 1 - startIndex) * columnSize;
-      delta = Math.max(maxNegativeOffset, Math.min(maxPositiveOffset, delta));
-
-      const indexOffset = Math.round(delta / columnSize);
-      const newIndex = Math.max(0, Math.min(colors.length - 1, startIndex + indexOffset));
-
-      setDragState((prev) => ({
-        ...prev,
-        currentPos: adjustedCurrentPos,
-        currentIndex: newIndex,
-      }));
-    },
-    [dragState, isSnapping, colors.length]
-  );
+    setDragState((prev) => ({
+      ...prev,
+      currentPos: adjustedCurrentPos,
+      currentIndex: newIndex,
+    }));
+  },
+  [dragState, isSnapping, colors.length]
+);
 
   const handleMouseUp = useCallback(() => {
     if (!dragState) return;
@@ -650,78 +615,81 @@ function ColorGenerator() {
     };
   }, [dragState, handleMouseMove, handleMouseUp]);
 
-  // Get Column Style
-  const getColumnStyle = (index, id) => {
-    if (!dragState) return {};
+// Updated getColumnStyle to handle desktop stacked mode
+const getColumnStyle = (index, id) => {
+  if (!dragState) return {};
 
-    const { startIndex, currentIndex, startPos, currentPos, columnSize, isMobile } =
-      dragState;
-    const isDragged = id === dragState.id;
-    const transformProp = isMobile ? 'translateY' : 'translateX';
+  const { startIndex, currentIndex, startPos, currentPos, columnSize, isMobile, isDesktopStacked } =
+    dragState;
+  const isDragged = id === dragState.id;
+  const transformProp = isMobile ? 'translateY' : 'translateX';
 
-    if (isDragged) {
-      if (isSnapping) {
-        const snapOffset = (currentIndex - startIndex) * columnSize;
-        return {
-          transform: `${transformProp}(${snapOffset}px)`,
-          zIndex: 100,
-          transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        };
-      }
-
-      const offset = currentPos - startPos;
+  if (isDragged) {
+    if (isSnapping) {
+      const snapOffset = (currentIndex - startIndex) * columnSize;
       return {
-        transform: `${transformProp}(${offset}px)`,
+        transform: `${transformProp}(${snapOffset}px)`,
         zIndex: 100,
-        transition: 'none',
+        transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
       };
     }
 
-    let shift = 0;
-    if (startIndex < currentIndex && index > startIndex && index <= currentIndex) {
-      shift = -1;
-    }
-    if (startIndex > currentIndex && index >= currentIndex && index < startIndex) {
-      shift = 1;
+    const offset = currentPos - startPos;
+    return {
+      transform: `${transformProp}(${offset}px)`,
+      zIndex: 100,
+      transition: 'none',
+    };
+  }
+
+  // Calculate shift for non-dragged items
+  let shift = 0;
+  if (startIndex < currentIndex && index > startIndex && index <= currentIndex) {
+    shift = -1;
+  }
+  if (startIndex > currentIndex && index >= currentIndex && index < startIndex) {
+    shift = 1;
+  }
+
+  return {
+    transform: shift !== 0 ? `${transformProp}(${shift * columnSize}px)` : `${transformProp}(0)`,
+    transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+  };
+};
+
+// Updated layout detection - ensure mobile always works correctly
+useEffect(() => {
+  const el = colorsAreaRef.current;
+  if (!el) return;
+
+  const update = () => {
+    // On mobile, don't use stackColors - CSS handles the layout
+    // stackColors is ONLY for desktop narrow-width scenarios
+    if (isMobileView()) {
+      setStackColors(false);
+      return;
     }
 
-    return {
-      transform: shift !== 0 ? `${transformProp}(${shift * columnSize}px)` : `${transformProp}(0)`,
-      transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-    };
+    const w = el.getBoundingClientRect().width;
+    const perCol = w / Math.max(1, colors.length);
+    setStackColors(perCol < MIN_COL_PX);
   };
 
-  // Layout Detection
-  useEffect(() => {
-    const el = colorsAreaRef.current;
-    if (!el) return;
+  update();
 
-    const update = () => {
-      if (isMobileView()) {
-        setStackColors(false);
-        return;
-      }
+  let ro;
+  if (typeof ResizeObserver !== 'undefined') {
+    ro = new ResizeObserver(update);
+    ro.observe(el);
+  } else {
+    window.addEventListener('resize', update);
+  }
 
-      const w = el.getBoundingClientRect().width;
-      const perCol = w / Math.max(1, colors.length);
-      setStackColors(perCol < MIN_COL_PX);
-    };
-
-    update();
-
-    let ro;
-    if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(update);
-      ro.observe(el);
-    } else {
-      window.addEventListener('resize', update);
-    }
-
-    return () => {
-      if (ro) ro.disconnect();
-      else window.removeEventListener('resize', update);
-    };
-  }, [colors.length]);
+  return () => {
+    if (ro) ro.disconnect();
+    else window.removeEventListener('resize', update);
+  };
+}, [colors.length]);
 
   // URL Parsing on Mount
   useEffect(() => {
@@ -758,11 +726,12 @@ function ColorGenerator() {
             hex,
             locked: false,
           }));
-          setHistory([{ colors: initialColors, visionMode: 'normal' }]);
+          setHistory([initialColors]);
           setHistoryIndex(0);
         }
       }
 
+      // Parse query params
       const mode = params.get('mode');
       const mood = params.get('mood');
       const contrast = parseFloat(params.get('contrast'));
@@ -772,7 +741,7 @@ function ColorGenerator() {
       if (['auto', 'mono', 'analogous', 'complementary', 'splitComplementary', 'triadic'].includes(mode)) {
         setGenerationMode(mode);
       }
-      if (['any', 'muted', 'pastel', 'vibrant', 'dark', 'light'].includes(mood)) {
+      if (['any', 'muted', 'pastel', 'vibrant', 'dark'].includes(mood)) {
         setConstraints((prev) => ({ ...prev, mood }));
       }
       if (!isNaN(contrast) && contrast >= 1 && contrast <= 4.5) {
@@ -813,17 +782,11 @@ function ColorGenerator() {
       canRedo: () => canRedo,
       getShareUrl,
     };
-    
-    return () => {
-      delete window.chromaAPI;
-    };
   }, [undo, redo, canUndo, canRedo, getShareUrl]);
 
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (editingId) return;
-      
       if (e.code === 'Space') {
         if (document.activeElement instanceof HTMLButtonElement) {
           document.activeElement.blur();
@@ -848,7 +811,7 @@ function ColorGenerator() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, colors.length, generatePalette, editingId]);
+  }, [undo, redo, colors.length, generatePalette]);
 
   // Color Display
   const getDisplayColor = (hex) => {
@@ -868,31 +831,13 @@ function ColorGenerator() {
     const hexPath = colors.map(c => c.hex.replace('#', '')).join('-');
     return `${window.location.origin}/${hexPath}`;
   }, [colors]);
-  
   const contentSections = useMemo(() => formatContentSections(seoData.content), [seoData.content]);
 
   const ogImageUrl = useMemo(() => {
-    if (typeof window === 'undefined') return 'https://ccolorpalette.com/og-image.png';
+    if (typeof window === 'undefined') return 'https://ccolorpalette.com/og-image.png'; // Fallback
     const hexPath = colors.map(c => c.hex.replace('#', '')).join('-');
+    // Point to the Netlify function
     return `${window.location.origin}/.netlify/functions/og-image?colors=${hexPath}`;
-  }, [colors]);
-
-  const relatedPalettes = useMemo(() => {
-    if (colors.length === 0) return [];
-    
-    const baseHsl = hexToHsl(colors[0].hex);
-    
-    return Array.from({ length: 6 }).map((_, i) => {
-      const hueOffset = i * 30;
-      const palette = generateRandomPalette('analogous', 5, { 
-        baseHue: (baseHsl.h + hueOffset) % 360 
-      });
-      
-      return {
-        hexes: palette.map((h) => h.replace('#', '')),
-        index: i,
-      };
-    });
   }, [colors]);
 
   const structuredData = useMemo(() => {
@@ -976,11 +921,7 @@ function ColorGenerator() {
         <main className="generator-container" ref={containerRef}>
           {/* Mobile Header */}
           <div className="mobile-header">
-            <button 
-              className="mobile-hint" 
-              onClick={() => generatePalette(colors.length)}
-              aria-label="Generate new palette"
-            >
+            <button className="mobile-hint" onClick={() => generatePalette(colors.length)}>
               Tap to generate
             </button>
 
@@ -989,7 +930,6 @@ function ColorGenerator() {
                 className={`mobile-icon-btn ${!canUndo ? 'disabled' : ''}`}
                 onClick={undo}
                 disabled={!canUndo}
-                aria-label="Undo"
               >
                 <Undo2 size={18} />
               </button>
@@ -997,7 +937,6 @@ function ColorGenerator() {
                 className={`mobile-icon-btn ${!canRedo ? 'disabled' : ''}`}
                 onClick={redo}
                 disabled={!canRedo}
-                aria-label="Redo"
               >
                 <Redo2 size={18} />
               </button>
@@ -1007,32 +946,24 @@ function ColorGenerator() {
               <button
                 className={`mobile-icon-btn ${isMethodOpen ? 'active' : ''}`}
                 onClick={() => togglePanel('method')}
-                aria-label="Generation method"
-                aria-pressed={isMethodOpen}
               >
                 <Sparkles size={18} />
               </button>
               <button
                 className={`mobile-icon-btn ${isA11yOpen ? 'active' : ''}`}
                 onClick={() => togglePanel('a11y')}
-                aria-label="Accessibility options"
-                aria-pressed={isA11yOpen}
               >
                 <Eye size={18} />
               </button>
               <button
                 className={`mobile-icon-btn ${isHistoryOpen ? 'active' : ''}`}
                 onClick={() => togglePanel('history')}
-                aria-label="Palette history"
-                aria-pressed={isHistoryOpen}
               >
                 <Clock size={18} />
               </button>
               <button
                 className={`mobile-icon-btn ${isExportOpen ? 'active' : ''}`}
                 onClick={() => togglePanel('export')}
-                aria-label="Export palette"
-                aria-pressed={isExportOpen}
               >
                 <Upload size={18} />
               </button>
@@ -1043,8 +974,6 @@ function ColorGenerator() {
           <section
             ref={colorsAreaRef}
             className={`colors-area ${stackColors ? 'stacked' : ''}`}
-            role="region"
-            aria-label="Color palette"
           >
             {colors.map((color, index) => {
               const displayHex = getDisplayColor(color.hex);
@@ -1055,15 +984,12 @@ function ColorGenerator() {
               const isDragging = dragState?.id === color.id;
               const isShadePicking = activeShadeId === color.id;
               const columnStyle = getColumnStyle(index, color.id);
-              const isEditing = editingId === color.id;
 
               return (
                 <React.Fragment key={color.id}>
                   <div
                     className={`color-column ${isNew ? 'color-entering' : ''} ${isRemoving ? 'color-removing' : ''} ${isDragging ? 'is-dragging' : ''} ${dragState && !isDragging ? 'is-shifting' : ''}`}
                     style={{ backgroundColor: displayHex, ...columnStyle }}
-                    role="article"
-                    aria-label={`Color ${color.hex}`}
                   >
                     {isShadePicking ? (
                       <div className="shade-container" onMouseLeave={handleMouseLeave}>
@@ -1078,7 +1004,6 @@ function ColorGenerator() {
                                 pickShade(color.id, shadeHex);
                               }}
                               title={shadeHex}
-                              aria-label={`Select shade ${shadeHex}`}
                             />
                           )
                         )}
@@ -1088,7 +1013,6 @@ function ColorGenerator() {
                             e.stopPropagation();
                             toggleShadePicker(null);
                           }}
-                          aria-label="Close shade picker"
                         >
                           <X size={20} />
                         </button>
@@ -1105,7 +1029,6 @@ function ColorGenerator() {
                                 e.currentTarget.blur();
                               }}
                               title="Remove"
-                              aria-label="Remove color"
                               style={{ color: textColor }}
                             >
                               <X size={20} />
@@ -1120,7 +1043,6 @@ function ColorGenerator() {
                               e.currentTarget.blur();
                             }}
                             title="Copy hex"
-                            aria-label={isCopied ? 'Copied' : 'Copy hex code'}
                             style={{ color: textColor }}
                           >
                             {isCopied ? <Check size={20} /> : <Copy size={20} />}
@@ -1134,8 +1056,6 @@ function ColorGenerator() {
                               e.currentTarget.blur();
                             }}
                             title={color.locked ? 'Unlock' : 'Lock'}
-                            aria-label={color.locked ? 'Unlock color' : 'Lock color'}
-                            aria-pressed={color.locked}
                             style={{ color: textColor }}
                           >
                             {color.locked ? <Lock size={20} /> : <Unlock size={20} />}
@@ -1144,8 +1064,6 @@ function ColorGenerator() {
                           <button
                             className={`toolbar-btn ${isShadePicking ? 'active' : ''}`}
                             title="Adjust shade"
-                            aria-label="Open shade picker"
-                            aria-pressed={isShadePicking}
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleShadePicker(color.id);
@@ -1159,45 +1077,35 @@ function ColorGenerator() {
                           <div
                             className="toolbar-btn drag-handle"
                             title="Drag to reorder"
-                            aria-label="Drag to reorder"
-                            role="button"
-                            tabIndex={0}
                             style={{ color: textColor }}
                             onMouseDown={(e) => handleDragStart(e, color.id, index)}
                             onTouchStart={(e) => handleDragStart(e, color.id, index)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                // Could implement keyboard reordering here
-                              }
-                            }}
                           >
                             <DragIcon size={20} />
                           </div>
                         </div>
 
                         <div className="color-content">
-                          {isEditing ? (
-                            <div className={`hex-input-wrapper ${hexError ? 'error' : ''}`}>
-                              <span className="hex-prefix" style={{ color: textColor }}>#</span>
-                              <input
-                                autoFocus
-                                className="hex-input"
-                                style={{ color: textColor }}
-                                value={editValue}
-                                onChange={(e) => {
-                                  let val = e.target.value.replace(/[^0-9A-F]/gi, '').toUpperCase();
-                                  if (val.length > 6) val = val.slice(0, 6);
-                                  setEditValue(val);
-                                  setHexError(false);
-                                }}
-                                onBlur={() => commitHexChange(color.id)}
-                                onKeyDown={(e) => handleHexKeyDown(e, color.id)}
-                                onClick={(e) => e.stopPropagation()}
-                                maxLength={6}
-                                placeholder="000000"
-                                aria-label="Edit hex color"
-                                aria-invalid={hexError}
-                              />
+                          {editingId === color.id ? (
+                            <div className="hex-input-wrapper">
+                                <input
+                                  autoFocus
+                                  className="hex-input"
+                                  style={{ color: textColor }}
+                                  value={editValue}
+                                  onChange={(e) => {
+                                    // 1. Strip the '#' and any non-hex characters immediately
+                                    let val = e.target.value.replace(/[^0-9A-F]/gi, '').toUpperCase();
+                                    
+                                    // 2. Limit to 6 characters so it doesn't overflow
+                                    if (val.length > 6) val = val.slice(0, 6);
+                                    
+                                    setEditValue(val);
+                                  }}
+                                  onBlur={() => commitHexChange(color.id)}
+                                  onKeyDown={(e) => handleHexKeyDown(e, color.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
                             </div>
                           ) : (
                             <h2
@@ -1205,13 +1113,6 @@ function ColorGenerator() {
                               style={{ color: textColor }}
                               onClick={(e) => handleHexClick(color.id, color.hex, e)}
                               title="Click to edit"
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  handleHexClick(color.id, color.hex, e);
-                                }
-                              }}
                             >
                               {isCopied ? 'Copied!' : color.hex.replace('#', '')}
                             </h2>
@@ -1219,7 +1120,7 @@ function ColorGenerator() {
                         </div>
 
                         {color.locked && (
-                          <div className="lock-indicator" style={{ color: textColor }} aria-hidden="true">
+                          <div className="lock-indicator" style={{ color: textColor }}>
                             <Lock size={16} />
                           </div>
                         )}
@@ -1235,7 +1136,7 @@ function ColorGenerator() {
                           addColorAtIndex(index);
                           e.currentTarget.blur();
                         }}
-                        aria-label={`Add color between ${colors[index].hex} and ${colors[index + 1].hex}`}
+                        aria-label="Add color"
                       >
                         <Plus size={24} strokeWidth={2.5} color="#161616" />
                       </button>
@@ -1306,16 +1207,27 @@ function ColorGenerator() {
             </div>
           )}
 
+          
           <div className="seo-related-links">
             <h3 className="seo-section-title">Explore Related Palettes</h3>
             <div>
-              {relatedPalettes.map((palette) => (
-                <a key={palette.index} href={`/${palette.hexes.join('-')}`}>
-                  Similar {seoData.traits?.temperature || 'Modern'} Palette {palette.index + 1}
-                </a>
-              ))}
+              {Array.from({ length: 6 }).map((_, i) => {
+                // NEW: Use the first color of the CURRENT palette as a "seed"
+                // This ensures this page always suggests similar "vibe" palettes
+                const baseHex = colors[0].hex; 
+                const randomHexes = generateRandomPalette('analogous', 5, { seed: baseHex + i })
+                  .map((h) => h.replace('#', ''));
+                  
+                return (
+                  <a key={i} href={`/${randomHexes.join('-')}`}>
+                    {/* Use the traits to give the link a better name for SEO */}
+                    Similar {seoData.traits?.temperature || 'Modern'} Palette {i + 1}
+                  </a>
+                );
+              })}
             </div>
           </div>
+          
 
           <div className="seo-color-reference">
             <h2 className="seo-section-title">Color Values</h2>
