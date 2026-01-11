@@ -1,0 +1,31 @@
+name: Daily Sitemap Update
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs every day at midnight
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      
+      - name: Install Dependencies
+        run: npm install
+        
+      - name: Generate Sitemap
+        run: node scripts/generate-sitemap.cjs
+        env:
+          GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          
+      - name: Commit and Push
+        run: |
+          git config --global user.name 'Sitemap Bot'
+          git config --global user.email 'bot@noreply.com'
+          git add public/sitemap.xml
+          git commit -m "Auto-update sitemap from GA4 data"
+          git push
