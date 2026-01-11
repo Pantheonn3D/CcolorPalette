@@ -34,7 +34,7 @@
     <priority>0.3</priority>
   </url>
 
-  <!-- Generated Palettes (501) -->
+  <!-- Generated Palettes (500) -->
   <url>
     <loc>https://ccolorpalette.com/2F121F-A21B6A-E32F80-E285B4-F0C7DB</loc>
     <lastmod>2026-01-11</lastmod>
@@ -5033,16 +5033,6 @@
     <image:image>
       <image:loc>https://ccolorpalette.com/.netlify/functions/og-image?colors=4F2161-C130E0-CF68E5-CA91E5-EBD0F1</image:loc>
       <image:title>Color Palette #4F2161 #C130E0 #CF68E5</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://ccolorpalette.com/000000-FFFFFF-FF0000-00FF00-0000FF</loc>
-    <lastmod>2026-01-11</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-    <image:image>
-      <image:loc>https://ccolorpalette.com/.netlify/functions/og-image?colors=000000-FFFFFF-FF0000-00FF00-0000FF</image:loc>
-      <image:title>Color Palette #000000 #FFFFFF #FF0000</image:title>
     </image:image>
   </url>
 </urlset>
