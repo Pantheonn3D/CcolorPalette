@@ -29,6 +29,13 @@ jobs:
         run: |
           git config --global user.name 'Sitemap Bot'
           git config --global user.email 'bot@noreply.com'
-          git add public/sitemap.xml
-          git commit -m "Auto-update sitemap from GA4 data"
-          git push
+          
+          # Only try to commit if 'git status' shows changes
+          if [[ -n $(git status --porcelain) ]]; then
+            git add public/sitemap.xml
+            git commit -m "Auto-update sitemap from GA4 data"
+            git push
+            echo "✅ Sitemap updated and pushed."
+          else
+            echo "💤 No changes to sitemap. Skipping commit."
+          fi
