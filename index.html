@@ -19,9 +19,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Favicons -->
-    <link rel="icon" href="/favicon.ico" sizes="any">
+    <!-- 1. Standard ICO for Yandex/Legacy (Removed sizes="any") -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    
+    <!-- 2. SVG for Modern Browsers -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    
+    <!-- 3. Apple Touch Icon (Also used by some bots as high-res favicon) -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    
+    <!-- 4. (Optional but recommended) Explicit PNG for Yandex -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
 
     <!-- Preconnect for performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
