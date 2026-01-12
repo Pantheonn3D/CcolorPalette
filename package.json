@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "echo '[]' >> src/data/generated-palettes.json 2>/dev/null || : && vite",
+    "dev": "node scripts/ensure-data.cjs && vite",
     "generate:sitemap": "node scripts/generate-sitemap.cjs",
     "build": "npm run generate:sitemap && vite build",
     "lint": "eslint .",
