@@ -1,5 +1,7 @@
 // scripts/generate-sitemap.cjs
 // Run with: node scripts/generate-sitemap.cjs
+process.env.GOOGLE_CLOUD_DISABLE_GRPC = 'true'; 
+process.env.GOOGLE_CLOUD_USE_REST = 'true';
 
 require('dotenv').config(); 
 const fs = require('fs');
@@ -126,7 +128,7 @@ function readDirectoryPalettes() {
   try {
     const filePath = path.join(__dirname, '../src/data/paletteDirectory.js');
     if (!fs.existsSync(filePath)) {
-        console.warn('⚠️  Local directory file not found.');
+        console.warn('Local directory file not found.');
         return [];
     }
     
@@ -141,7 +143,7 @@ function readDirectoryPalettes() {
     const quotedStrings = arrayMatch[1].match(/["']([^"']+)["']/g);
     return quotedStrings ? quotedStrings.map(s => s.slice(1, -1)) : [];
   } catch (error) {
-    console.error('❌ Failed to read local directory:', error.message);
+    console.error('Failed to read local directory:', error.message);
     return [];
   }
 }
@@ -153,7 +155,7 @@ function readDirectoryPalettes() {
 async function fetchGA4EngagementData() {
   // Graceful fallback if credentials aren't set
   if (!process.env.GA4_PROPERTY_ID || !process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-    console.log('ℹ️  Skipping GA4: Missing env variables (GA4_PROPERTY_ID or GOOGLE_APPLICATION_CREDENTIALS_JSON)');
+    console.log('ℹSkipping GA4: Missing env variables (GA4_PROPERTY_ID or GOOGLE_APPLICATION_CREDENTIALS_JSON)');
     return new Set();
   }
 
@@ -162,7 +164,7 @@ async function fetchGA4EngagementData() {
     const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
     const analyticsDataClient = new BetaAnalyticsDataClient({ credentials });
 
-    console.log('📡 Connecting to Google Analytics...');
+    console.log('Connecting to Google Analytics...');
     
     const [response] = await analyticsDataClient.runReport({
       property: `properties/${process.env.GA4_PROPERTY_ID}`,
@@ -193,7 +195,7 @@ async function fetchGA4EngagementData() {
 
     return discovered;
   } catch (error) {
-    console.error('⚠️  GA4 Fetch Error:', error.message);
+    console.error('GA4 Fetch Error:', error.message);
     return new Set();
   }
 }
@@ -203,19 +205,19 @@ async function fetchGA4EngagementData() {
 // ============================================
 
 async function generateSitemap() {
-  console.log('\n🎨 Starting Dynamic Sitemap Generation...\n');
+  console.log('\nStarting Dynamic Sitemap Generation...\n');
 
   // 1. Get Local Palettes
   const localPalettes = readDirectoryPalettes();
-  console.log(`📂 Loaded ${localPalettes.length} curated palettes from file.`);
+  console.log(`Loaded ${localPalettes.length} curated palettes from file.`);
 
   // 2. Get GA4 Palettes
   const ga4Palettes = await fetchGA4EngagementData();
-  console.log(`📊 Discovered ${ga4Palettes.size} active palettes from GA4.`);
+  console.log(`Discovered ${ga4Palettes.size} active palettes from GA4.`);
 
   // 3. Merge & Deduplicate
   const combinedSet = new Set([...localPalettes, ...ga4Palettes]);
-  console.log(`🔄 Total candidates: ${combinedSet.size}`);
+  console.log(`Total candidates: ${combinedSet.size}`);
   
   // 4. Score & Filter
   const finalPalettes = [];
@@ -233,9 +235,9 @@ async function generateSitemap() {
   // Cap size if necessary
   const exportList = finalPalettes.slice(0, MAX_PALETTES);
   
-  console.log(`✅ Quality Check: Approved ${finalPalettes.length} (Rejected ${rejectedCount} low quality).`);
+  console.log(`Quality Check: Approved ${finalPalettes.length} (Rejected ${rejectedCount} low quality).`);
   if (finalPalettes.length > MAX_PALETTES) {
-    console.log(`✂️  Capped at ${MAX_PALETTES} palettes.`);
+    console.log(`Capped at ${MAX_PALETTES} palettes.`);
   }
 
   // 5. Generate XML
@@ -299,14 +301,23 @@ async function generateSitemap() {
 
   xml += `</urlset>`;
 
+  // 6. Generate JSON for the React Frontend
+  // This saves the exact same list used in the sitemap to your src folder
+  const jsonOutputPath = path.join(__dirname, '../src/data/generated-palettes.json');
+  
+  fs.writeFileSync(jsonOutputPath, JSON.stringify(exportList, null, 2));
+  console.log(`React Data successfully written to ${jsonOutputPath}`);
+  
+  // ---------------------------------------------------------
+
   const outputPath = path.join(__dirname, '../public/sitemap.xml');
   fs.writeFileSync(outputPath, xml);
   
-  console.log(`\n🎉 Sitemap successfully written to ${outputPath}`);
+  console.log(`\nSitemap successfully written to ${outputPath}`);
 }
 
 // Run safely
 generateSitemap().catch(error => {
-  console.error('❌ Fatal Error:', error);
+  console.error('Fatal Error:', error);
   process.exit(1);
 });

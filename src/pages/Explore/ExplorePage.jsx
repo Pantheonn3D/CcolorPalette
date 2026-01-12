@@ -1,26 +1,35 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Search } from 'lucide-react';
-import { DIRECTORY_PALETTES } from '../../data/paletteDirectory';
+import { ArrowLeft, Search, PlusCircle } from 'lucide-react';
 import logo from '../../assets/Frame4ico.png';
 import './ExplorePage.css';
 import { Helmet } from 'react-helmet-async';
 import { trackEvent } from '../../utils/analytics';
 
+// CHANGE 1: Import the generated JSON instead of the static directory
+// Ensure you have run the script so this file exists!
+import GENERATED_PALETTES from '../../data/generated-palettes.json';
 
-<Helmet>
-  <title>Explore All Color Palettes | CColorPalette Directory</title>
-</Helmet>
+// Fallback in case the script hasn't run yet, prevents crash
+const PALETTES_SOURCE = GENERATED_PALETTES || [];
 
 function ExplorePage() {
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // CHANGE 2: Pagination state
+  const [displayLimit, setDisplayLimit] = useState(60); 
 
-  // Simple filter to let users find hex codes if they want
+  // Filter logic
   const filteredPalettes = useMemo(() => {
-    if (!searchTerm) return DIRECTORY_PALETTES;
+    if (!searchTerm) return PALETTES_SOURCE;
     const term = searchTerm.toUpperCase().replace('#', '');
-    return DIRECTORY_PALETTES.filter(p => p.includes(term));
+    return PALETTES_SOURCE.filter(p => p.includes(term));
   }, [searchTerm]);
+
+  // Determine what is currently visible based on limit
+  const visiblePalettes = useMemo(() => {
+    return filteredPalettes.slice(0, displayLimit);
+  }, [filteredPalettes, displayLimit]);
 
   useEffect(() => {
     if (searchTerm.length > 2) {
@@ -31,9 +40,18 @@ function ExplorePage() {
     }
   }, [searchTerm]);
 
+  // Reset pagination when search changes
+  useEffect(() => {
+    setDisplayLimit(60);
+  }, [searchTerm]);
+
   return (
     <div className="explore-page">
-      {/* Simple Header */}
+      <Helmet>
+        <title>Explore All Color Palettes | CColorPalette Directory</title>
+        <meta name="description" content={`Browse our complete directory of ${PALETTES_SOURCE.length} curated color combinations.`} />
+      </Helmet>
+
       <header className="explore-header">
         <div className="header-container">
           <Link to="/" className="header-logo">
@@ -52,10 +70,9 @@ function ExplorePage() {
           <div className="explore-hero">
             <h1 className="section-title">Explore All Palettes</h1>
             <p className="section-subtitle">
-              Browse our complete directory of {DIRECTORY_PALETTES.length} curated color combinations.
+              Browse our complete directory of {PALETTES_SOURCE.length} curated color combinations.
             </p>
             
-            {/* Search Bar */}
             <div className="search-wrapper">
               <Search className="search-icon" size={20} />
               <input 
@@ -69,14 +86,14 @@ function ExplorePage() {
           </div>
 
           <div className="explore-grid">
-            {filteredPalettes.map((paletteString) => {
+            {visiblePalettes.map((paletteString) => {
               const colors = paletteString.split('-');
               return (
                 <a 
                   key={paletteString} 
                   href={`/${paletteString}`}
                   className="mini-card"
-                  target="_blank" // Optional: open in new tab so they don't lose place
+                  target="_blank" 
                   rel="noopener noreferrer"
                 >
                   <div className="mini-preview">
@@ -94,6 +111,23 @@ function ExplorePage() {
             })}
           </div>
 
+          {/* Load More Button */}
+          {visiblePalettes.length < filteredPalettes.length && (
+            <div className="load-more-container" style={{ textAlign: 'center', margin: '40px 0' }}>
+              <button 
+                onClick={() => setDisplayLimit(prev => prev + 60)} 
+                className="btn-secondary"
+                style={{ padding: '12px 24px', cursor: 'pointer' }}
+              >
+                <PlusCircle size={18} style={{ marginRight: '8px' }}/>
+                Load More
+              </button>
+              <p style={{ marginTop: '10px', opacity: 0.6, fontSize: '0.9rem' }}>
+                Showing {visiblePalettes.length} of {filteredPalettes.length}
+              </p>
+            </div>
+          )}
+
           {filteredPalettes.length === 0 && (
             <div className="empty-state">
               <p>No palettes found matching "{searchTerm}"</p>
@@ -102,7 +136,6 @@ function ExplorePage() {
         </div>
       </main>
 
-      {/* Simple Footer */}
       <footer className="explore-footer">
         <p>© 2026 CColorPalette Directory</p>
       </footer>
