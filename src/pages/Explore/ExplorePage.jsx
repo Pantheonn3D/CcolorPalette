@@ -6,17 +6,17 @@ import './ExplorePage.css';
 import { Helmet } from 'react-helmet-async';
 import { trackEvent } from '../../utils/analytics';
 
-// CHANGE 1: Import the generated JSON instead of the static directory
-// Ensure you have run the script so this file exists!
+// Import the auto-generated data
+// If this file is missing locally, run: node scripts/generate-sitemap.cjs
 import GENERATED_PALETTES from '../../data/generated-palettes.json';
 
-// Fallback in case the script hasn't run yet, prevents crash
-const PALETTES_SOURCE = GENERATED_PALETTES || [];
+// Safety check: ensure it is an array
+const PALETTES_SOURCE = Array.isArray(GENERATED_PALETTES) ? GENERATED_PALETTES : [];
 
 function ExplorePage() {
   const [searchTerm, setSearchTerm] = useState('');
   
-  // CHANGE 2: Pagination state
+  // Start with 60 to keep initial load fast
   const [displayLimit, setDisplayLimit] = useState(60); 
 
   // Filter logic
@@ -48,17 +48,21 @@ function ExplorePage() {
   return (
     <div className="explore-page">
       <Helmet>
-        <title>Explore All Color Palettes | CColorPalette Directory</title>
-        <meta name="description" content={`Browse our complete directory of ${PALETTES_SOURCE.length} curated color combinations.`} />
+        {/* FIXED: Wrapped in template literal to ensure it is passed as a single string */}
+        <title>{`Explore ${PALETTES_SOURCE.length}+ Color Palettes | CColorPalette`}</title>
+        <meta name="description" content={`Browse our complete directory of ${PALETTES_SOURCE.length} curated color palettes. Find the perfect color scheme for your next web design, branding, or creative project.`} />
+        
+        {/* Canonical Tag */}
+        <link rel="canonical" href="https://ccolorpalette.com/explore" />
       </Helmet>
 
       <header className="explore-header">
         <div className="header-container">
-          <Link to="/" className="header-logo">
+          <Link to="/" className="header-logo" data-discover="true">
              <img src={logo} alt="CColorPalette" className="header-logo-img" />
              <span className="header-logo-text">CColorPalette</span>
           </Link>
-          <Link to="/" className="btn-secondary btn-small">
+          <Link to="/" className="btn-secondary btn-small" data-discover="true">
             <ArrowLeft size={16} />
             <span>Back to Generator</span>
           </Link>
@@ -117,10 +121,10 @@ function ExplorePage() {
               <button 
                 onClick={() => setDisplayLimit(prev => prev + 60)} 
                 className="btn-secondary"
-                style={{ padding: '12px 24px', cursor: 'pointer' }}
+                style={{ padding: '12px 24px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
               >
                 <PlusCircle size={18} style={{ marginRight: '8px' }}/>
-                Load More
+                Load More Palettes
               </button>
               <p style={{ marginTop: '10px', opacity: 0.6, fontSize: '0.9rem' }}>
                 Showing {visiblePalettes.length} of {filteredPalettes.length}

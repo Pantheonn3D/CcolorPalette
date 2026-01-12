@@ -1,8 +1,9 @@
 name: Daily Sitemap Update
+
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs every day at midnight
-  workflow_dispatch: # Allows manual trigger
+    - cron: '0 0 * * *' # Runs every day at midnight UTC
+  workflow_dispatch: # Allows manual button click
 
 permissions:
   contents: write
@@ -12,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - uses: actions/setup-node@v3
         with:
           node-version: 18
@@ -19,7 +21,7 @@ jobs:
       - name: Install Dependencies
         run: npm install
         
-      - name: Generate Sitemap
+      - name: Generate Sitemap & Data
         run: node scripts/generate-sitemap.cjs
         env:
           GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
@@ -30,12 +32,14 @@ jobs:
           git config --global user.name 'Sitemap Bot'
           git config --global user.email 'bot@noreply.com'
           
-          # Only try to commit if 'git status' shows changes
+          # Check if there are changes before committing
           if [[ -n $(git status --porcelain) ]]; then
-            git add public/sitemap.xml
-            git commit -m "Auto-update sitemap from GA4 data"
+            # IMPORTANT: Add both the Sitemap AND the JSON Data
+            git add public/sitemap.xml src/data/generated-palettes.json
+            
+            git commit -m "Auto-update sitemap and palette data"
             git push
-            echo "✅ Sitemap updated and pushed."
+            echo "Sitemap and JSON data updated."
           else
-            echo "💤 No changes to sitemap. Skipping commit."
+            echo "No changes to sitemap or data."
           fi
