@@ -283,6 +283,82 @@ const generateCohesiveVariationsOklch = (hues, mood, count, rng) => {
   return result;
 };
 
+// NEW: Sorts colors to maximize adjacent contrast (Zig-Zag: Dark, Light, Dark, Light)
+const optimizeForContrast = (colors, targetRatio) => {
+  // 1. Sort by Luminance first (Darkest to Lightest)
+  const sortedByLum = colors.map(hex => ({
+    hex,
+    lum: relativeLuminance(hex),
+    oklch: hexToOklch(hex)
+  })).sort((a, b) => a.lum - b.lum);
+
+  // 2. Zipper Merge to maximize difference
+  const result = [];
+  let left = 0;
+  let right = sortedByLum.length - 1;
+
+  while (left <= right) {
+    if (left === right) {
+      result.push(sortedByLum[left]);
+    } else {
+      result.push(sortedByLum[left]); // Add Dark
+      result.push(sortedByLum[right]); // Add Light
+    }
+    left++;
+    right--;
+  }
+
+  // 3. Enforce Minimum Contrast (Nudge values if sorting isn't enough)
+  // We skip this if the target is very low (1.0 - 1.5)
+  if (targetRatio > 1.5) {
+    for (let i = 0; i < result.length - 1; i++) {
+      const c1 = result[i];
+      let c2 = result[i + 1];
+
+      const currentRatio = wcagContrastRatio(c1.hex, c2.hex);
+
+      if (currentRatio < targetRatio) {
+        // Contrast is too low. We need to push c2 away from c1.
+        // If c1 is dark, make c2 lighter. If c1 is light, make c2 darker.
+        let { L, C, h } = c2.oklch;
+        
+        // Safety cap to prevent breaking colors completely
+        const step = 0.05; 
+        const maxAttempts = 10;
+        let attempts = 0;
+
+        let bestHex = c2.hex;
+        let bestRatio = currentRatio;
+
+        while (attempts < maxAttempts && bestRatio < targetRatio) {
+          if (c1.lum < 0.5) {
+            L = Math.min(0.98, L + step); // Lighten
+          } else {
+            L = Math.max(0.02, L - step); // Darken
+          }
+          
+          const newHex = oklchToHex(L, C, h);
+          const newRatio = wcagContrastRatio(c1.hex, newHex);
+          
+          if (newRatio > bestRatio) {
+            bestRatio = newRatio;
+            bestHex = newHex;
+          }
+          
+          // If we hit the rails (pure black/white), stop
+          if (L >= 0.98 || L <= 0.02) break;
+          attempts++;
+        }
+        
+        // Update the color in the array
+        result[i + 1] = { ...c2, hex: bestHex, oklch: { L, C, h }, lum: relativeLuminance(bestHex) };
+      }
+    }
+  }
+
+  return result.map(c => c.hex);
+};
+
 // ============================================
 // 3. MAIN PALETTE GENERATOR (OKLCH-based)
 // ============================================
@@ -323,6 +399,14 @@ export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}
     const h = hues[i];
     let { C, L } = clValues[i];
 
+    // If High Contrast is requested, we force a wider spread of Lightness during generation
+    // This helps the "optimizeForContrast" function later
+    if (constraints.minContrast && constraints.minContrast > 2.5) {
+      // Even/Odd logic to pre-seed contrast
+      if (i % 2 === 0) L = Math.max(0.15, Math.min(0.4, L)); // Push Dark
+      else L = Math.max(0.6, Math.min(0.95, L)); // Push Light
+    }
+
     const polished = adjustForVibrancyOklch(L, C, h);
 
     if (constraints.darkModeFriendly && polished.L > 0.85) polished.L = 0.85;
@@ -330,7 +414,14 @@ export const generateRandomPalette = (mode = 'auto', count = 5, constraints = {}
     palette.push(oklchToHex(polished.L, polished.C, polished.h));
   }
 
-  return optimizeColorOrder(palette);
+  // === UPDATED LOGIC HERE ===
+  // If the user wants specific contrast (> 1.5), we use the zipper sort.
+  // Otherwise, we use the smooth gradient sort.
+  if (constraints.minContrast && constraints.minContrast > 1.5) {
+    return optimizeForContrast(palette, constraints.minContrast);
+  } else {
+    return optimizeColorOrder(palette);
+  }
 };
 
 // ============================================
