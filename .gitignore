@@ -26,3 +26,4 @@ dist-ssr
 *.json
 !package.json
 !tsconfig.json
+!src/data/generated-palettes.json
