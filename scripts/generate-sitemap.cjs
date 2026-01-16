@@ -9,8 +9,44 @@ const path = require('path');
 const { BetaAnalyticsDataClient } = require('@google-analytics/data');
 
 const DOMAIN = 'https://ccolorpalette.com';
-const MIN_QUALITY_SCORE = 60; // Palettes below this score won't be indexed
-const MAX_PALETTES = 5000;    // Hard cap to prevent massive sitemaps
+const MIN_QUALITY_SCORE = 60;
+const MAX_PALETTES = 5000;
+
+// ============================================
+// STATIC PAGES CONFIGURATION
+// ============================================
+
+const STATIC_PAGES = [
+  // Core Pages
+  { path: '/', changefreq: 'daily', priority: 1.0 },
+  { path: '/home', changefreq: 'weekly', priority: 0.9 },
+  { path: '/explore', changefreq: 'daily', priority: 0.9 },
+  
+  // Guides (High SEO Value)
+  { path: '/guides/color-theory', changefreq: 'monthly', priority: 0.8 },
+  { path: '/guides/accessibility-wcag', changefreq: 'monthly', priority: 0.8 },
+  { path: '/guides/tailwind-css-colors', changefreq: 'monthly', priority: 0.8 },
+  { path: '/guides/brand-color-palette', changefreq: 'monthly', priority: 0.8 },
+  { path: '/guides/color-psychology', changefreq: 'monthly', priority: 0.8 },
+  { path: '/guides/web-design-colors', changefreq: 'monthly', priority: 0.8 },
+  
+  // Tools
+  { path: '/tools/color-converter', changefreq: 'monthly', priority: 0.7 },
+  { path: '/tools/contrast-checker', changefreq: 'monthly', priority: 0.7 },
+  
+  // Resources
+  { path: '/glossary', changefreq: 'monthly', priority: 0.7 },
+  { path: '/sitemap', changefreq: 'weekly', priority: 0.5 },
+  
+  // Legal
+  { path: '/privacy', changefreq: 'yearly', priority: 0.3 },
+  { path: '/terms', changefreq: 'yearly', priority: 0.3 },
+];
+
+// Palette Discovery Pages (Topic Clusters)
+const COLOR_FAMILIES = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'teal'];
+const MOODS = ['vibrant', 'pastel', 'muted', 'dark', 'warm', 'cool', 'earthy', 'elegant', 'playful', 'bright', 'moody', 'neon', 'retro', 'soft'];
+const INDUSTRIES = ['technology', 'healthcare', 'finance', 'food', 'fashion', 'education', 'realestate', 'entertainment'];
 
 // ============================================
 // 1. COLOR MATH & SCORING UTILITIES
@@ -54,12 +90,10 @@ function wcagContrastRatio(hex1, hex2) {
   return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
 
-// Check if colors follow a harmony (Monochromatic, Analogous, etc)
 function scoreHarmony(hsls) {
   if (hsls.length < 2) return 50;
   const hues = hsls.map(c => c.h);
   
-  // Calculate max distance between any two hues
   let maxDiff = 0;
   for (let i = 0; i < hues.length; i++) {
     for (let j = i + 1; j < hues.length; j++) {
@@ -69,54 +103,46 @@ function scoreHarmony(hsls) {
     }
   }
 
-  // Heuristics for harmonies
-  if (maxDiff < 30) return 90; // Monochromatic (Very cohesive)
-  if (maxDiff < 60) return 85; // Analogous (Pleasing)
-  if (maxDiff > 150 && maxDiff < 210) return 80; // Complementary
+  if (maxDiff < 30) return 90;
+  if (maxDiff < 60) return 85;
+  if (maxDiff > 150 && maxDiff < 210) return 80;
   
-  return 60; // Random/Custom
+  return 60;
 }
 
-// Ensure text is readable on at least one color
 function scoreAccessibility(hexColors) {
   let bestContrast = 0;
-  // Check contrast against black/white for text usage
   for (const hex of hexColors) {
     const onWhite = wcagContrastRatio(hex, 'FFFFFF');
     const onBlack = wcagContrastRatio(hex, '000000');
     bestContrast = Math.max(bestContrast, onWhite, onBlack);
   }
   
-  if (bestContrast >= 7) return 100; // AAA
-  if (bestContrast >= 4.5) return 85; // AA
-  if (bestContrast >= 3) return 60; // Large Text AA
-  return 30; // Poor accessibility
+  if (bestContrast >= 7) return 100;
+  if (bestContrast >= 4.5) return 85;
+  if (bestContrast >= 3) return 60;
+  return 30;
 }
 
 function calculateQualityScore(paletteString) {
   try {
     const hexColors = paletteString.split('-');
     
-    // 1. Basic Format Validation
     if (hexColors.length < 2 || hexColors.length > 10) return 0;
     if (!hexColors.every(h => /^[0-9A-Fa-f]{6}$/.test(h))) return 0;
 
-    // 2. Duplicate Check (Penalty for repetitive colors)
     const uniqueColors = new Set(hexColors);
     if (uniqueColors.size < hexColors.length) return 40; 
 
-    // 3. Calculate Metrics
     const hsls = hexColors.map(hexToHsl);
     const harmonyScore = scoreHarmony(hsls);
     const a11yScore = scoreAccessibility(hexColors);
 
-    // 4. Weighted Final Score
-    // Harmony (40%) + Accessibility (40%) + Base (20%)
     const finalScore = (harmonyScore * 0.4) + (a11yScore * 0.4) + 20;
     
     return Math.round(finalScore);
   } catch (e) {
-    return 0; // Invalid palette
+    return 0;
   }
 }
 
@@ -128,18 +154,15 @@ function readDirectoryPalettes() {
   try {
     const filePath = path.join(__dirname, '../src/data/paletteDirectory.js');
     if (!fs.existsSync(filePath)) {
-        console.warn('Local directory file not found.');
-        return [];
+      console.warn('Local directory file not found.');
+      return [];
     }
     
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    
-    // Regex to extract array from "export const DIRECTORY_PALETTES = [...]"
     const arrayMatch = fileContent.match(/export\s+const\s+DIRECTORY_PALETTES\s*=\s*\[([\s\S]*?)\]/);
     
     if (!arrayMatch || !arrayMatch[1]) return [];
     
-    // Extract strings inside quotes
     const quotedStrings = arrayMatch[1].match(/["']([^"']+)["']/g);
     return quotedStrings ? quotedStrings.map(s => s.slice(1, -1)) : [];
   } catch (error) {
@@ -153,25 +176,23 @@ function readDirectoryPalettes() {
 // ============================================
 
 async function fetchGA4EngagementData() {
-  // Graceful fallback if credentials aren't set
   if (!process.env.GA4_PROPERTY_ID || !process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-    console.log('ℹSkipping GA4: Missing env variables (GA4_PROPERTY_ID or GOOGLE_APPLICATION_CREDENTIALS_JSON)');
+    console.log('ℹ️ Skipping GA4: Missing env variables');
     return new Set();
   }
 
   try {
-    // Parse JSON string from Env Var
     const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
     const analyticsDataClient = new BetaAnalyticsDataClient({ credentials });
 
-    console.log('Connecting to Google Analytics...');
+    console.log('📊 Connecting to Google Analytics...');
     
     const [response] = await analyticsDataClient.runReport({
       property: `properties/${process.env.GA4_PROPERTY_ID}`,
       dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
       dimensions: [{ name: 'pagePath' }],
       metrics: [{ name: 'screenPageViews' }],
-      limit: 2000 // Check last 2000 active pages
+      limit: 2000
     });
 
     const discovered = new Set();
@@ -179,13 +200,10 @@ async function fetchGA4EngagementData() {
     if (response.rows) {
       response.rows.forEach(row => {
         const pagePath = row.dimensionValues[0].value;
-        // Regex to find palette URLs like /3F1349-BB8FE2-31C53C...
-        // Matches 6-digit hex codes separated by hyphens (at least 2 colors)
         const match = pagePath.match(/\/([0-9A-Fa-f]{6}(?:-[0-9A-Fa-f]{6})+)/);
         
         if (match) {
           const paletteCode = match[1].toUpperCase();
-          // Filter out obvious junk
           if (paletteCode.length >= 13) { 
             discovered.add(paletteCode);
           }
@@ -201,23 +219,59 @@ async function fetchGA4EngagementData() {
 }
 
 // ============================================
-// 4. MAIN GENERATOR
+// 4. XML GENERATION HELPERS
+// ============================================
+
+function generateUrlEntry(pagePath, lastmod, changefreq, priority, imageData = null) {
+  let xml = `  <url>
+    <loc>${DOMAIN}${pagePath}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>`;
+  
+  if (imageData) {
+    xml += `
+    <image:image>
+      <image:loc>${imageData.loc}</image:loc>
+      <image:title>${escapeXml(imageData.title)}</image:title>
+    </image:image>`;
+  }
+  
+  xml += `
+  </url>
+`;
+  return xml;
+}
+
+function escapeXml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+// ============================================
+// 5. MAIN GENERATOR
 // ============================================
 
 async function generateSitemap() {
-  console.log('\nStarting Dynamic Sitemap Generation...\n');
+  console.log('\n🚀 Starting Dynamic Sitemap Generation...\n');
+
+  const today = new Date().toISOString().split('T')[0];
 
   // 1. Get Local Palettes
   const localPalettes = readDirectoryPalettes();
-  console.log(`Loaded ${localPalettes.length} curated palettes from file.`);
+  console.log(`📁 Loaded ${localPalettes.length} curated palettes from file.`);
 
   // 2. Get GA4 Palettes
   const ga4Palettes = await fetchGA4EngagementData();
-  console.log(`Discovered ${ga4Palettes.size} active palettes from GA4.`);
+  console.log(`📈 Discovered ${ga4Palettes.size} active palettes from GA4.`);
 
   // 3. Merge & Deduplicate
   const combinedSet = new Set([...localPalettes, ...ga4Palettes]);
-  console.log(`Total candidates: ${combinedSet.size}`);
+  console.log(`🔀 Total candidates: ${combinedSet.size}`);
   
   // 4. Score & Filter
   const finalPalettes = [];
@@ -232,92 +286,121 @@ async function generateSitemap() {
     }
   }
 
-  // Cap size if necessary
   const exportList = finalPalettes.slice(0, MAX_PALETTES);
   
-  console.log(`Quality Check: Approved ${finalPalettes.length} (Rejected ${rejectedCount} low quality).`);
+  console.log(`✅ Quality Check: Approved ${finalPalettes.length} (Rejected ${rejectedCount} low quality).`);
   if (finalPalettes.length > MAX_PALETTES) {
-    console.log(`Capped at ${MAX_PALETTES} palettes.`);
+    console.log(`⚠️ Capped at ${MAX_PALETTES} palettes.`);
   }
 
   // 5. Generate XML
-  const today = new Date().toISOString().split('T')[0];
-  
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-  
-  <!-- Core Pages -->
-  <url>
-    <loc>${DOMAIN}/</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${DOMAIN}/home</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>${DOMAIN}/explore</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>${DOMAIN}/privacy</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>${DOMAIN}/terms</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
 
-  <!-- Generated Palettes (${exportList.length}) -->
+  <!-- ============================================
+       STATIC PAGES
+       ============================================ -->
 `;
 
-  exportList.forEach(palette => {
-    // Generate an OG Image URL for the image sitemap extension (great for Google Images)
+  // Add static pages
+  for (const page of STATIC_PAGES) {
+    xml += generateUrlEntry(page.path, today, page.changefreq, page.priority);
+  }
+
+  // Add color family pages
+  xml += `
+  <!-- ============================================
+       PALETTES BY COLOR (${COLOR_FAMILIES.length} pages)
+       ============================================ -->
+`;
+  for (const color of COLOR_FAMILIES) {
+    xml += generateUrlEntry(
+      `/palettes/color/${color}`,
+      today,
+      'weekly',
+      0.7
+    );
+  }
+
+  // Add mood pages
+  xml += `
+  <!-- ============================================
+       PALETTES BY MOOD (${MOODS.length} pages)
+       ============================================ -->
+`;
+  for (const mood of MOODS) {
+    xml += generateUrlEntry(
+      `/palettes/mood/${mood}`,
+      today,
+      'weekly',
+      0.7
+    );
+  }
+
+  // Add industry pages
+  xml += `
+  <!-- ============================================
+       PALETTES BY INDUSTRY (${INDUSTRIES.length} pages)
+       ============================================ -->
+`;
+  for (const industry of INDUSTRIES) {
+    xml += generateUrlEntry(
+      `/palettes/industry/${industry}`,
+      today,
+      'weekly',
+      0.7
+    );
+  }
+
+  // Add dynamic palette pages
+  xml += `
+  <!-- ============================================
+       GENERATED PALETTES (${exportList.length} pages)
+       ============================================ -->
+`;
+
+  for (const palette of exportList) {
     const ogUrl = `${DOMAIN}/.netlify/functions/og-image?colors=${palette}`;
+    const colorPreview = palette.split('-').slice(0, 3).map(c => '#' + c).join(' ');
     
-    xml += `  <url>
-    <loc>${DOMAIN}/${palette}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-    <image:image>
-      <image:loc>${ogUrl}</image:loc>
-      <image:title>Color Palette ${palette.split('-').slice(0, 3).map(c => '#' + c).join(' ')}</image:title>
-    </image:image>
-  </url>
-`;
-  });
+    xml += generateUrlEntry(
+      `/${palette}`,
+      today,
+      'monthly',
+      0.6,
+      {
+        loc: ogUrl,
+        title: `Color Palette ${colorPreview}`
+      }
+    );
+  }
 
   xml += `</urlset>`;
 
-  // 6. Generate JSON for the React Frontend
-  // This saves the exact same list used in the sitemap to your src folder
-  const jsonOutputPath = path.join(__dirname, '../src/data/generated-palettes.json');
-  
-  fs.writeFileSync(jsonOutputPath, JSON.stringify(exportList, null, 2));
-  console.log(`React Data successfully written to ${jsonOutputPath}`);
-  
-  // ---------------------------------------------------------
+  // 6. Calculate totals
+  const totalPages = STATIC_PAGES.length + COLOR_FAMILIES.length + MOODS.length + INDUSTRIES.length + exportList.length;
 
+  // 7. Generate JSON for the React Frontend
+  const jsonOutputPath = path.join(__dirname, '../src/data/generated-palettes.json');
+  fs.writeFileSync(jsonOutputPath, JSON.stringify(exportList, null, 2));
+  console.log(`📝 React Data written to ${jsonOutputPath}`);
+
+  // 8. Write sitemap
   const outputPath = path.join(__dirname, '../public/sitemap.xml');
   fs.writeFileSync(outputPath, xml);
   
-  console.log(`\nSitemap successfully written to ${outputPath}`);
+  console.log(`\n✨ Sitemap successfully written to ${outputPath}`);
+  console.log(`📊 Total URLs: ${totalPages}`);
+  console.log(`   - Static pages: ${STATIC_PAGES.length}`);
+  console.log(`   - Color pages: ${COLOR_FAMILIES.length}`);
+  console.log(`   - Mood pages: ${MOODS.length}`);
+  console.log(`   - Industry pages: ${INDUSTRIES.length}`);
+  console.log(`   - Palette pages: ${exportList.length}`);
 }
 
 // Run safely
 generateSitemap().catch(error => {
-  console.error('Fatal Error:', error);
+  console.error('❌ Fatal Error:', error);
   process.exit(1);
 });
