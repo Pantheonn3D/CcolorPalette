@@ -6,29 +6,24 @@ const PANEL_WIDTH = 280;
 
 const COLOR_BLIND_MODES = [
   { id: 'normal', label: 'Normal Vision' },
-  { id: 'protanopia', label: 'Protanopia (Red-Blind)' },
-  { id: 'deuteranopia', label: 'Deuteranopia (Green-Blind)' },
-  { id: 'tritanopia', label: 'Tritanopia (Blue-Blind)' },
-  { id: 'achromatopsia', label: 'Achromatopsia (Monochrome)' },
+  { id: 'protanopia', label: 'Protanopia', desc: 'Red-blind' },
+  { id: 'deuteranopia', label: 'Deuteranopia', desc: 'Green-blind' },
+  { id: 'tritanopia', label: 'Tritanopia', desc: 'Blue-blind' },
+  { id: 'achromatopsia', label: 'Achromatopsia', desc: 'Monochrome' },
 ];
 
 const getLuminance = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;
-
-  const toLinear = (c) =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-
+  const toLinear = (c) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 };
 
 const getContrastRatio = (hex1, hex2) => {
   const l1 = getLuminance(hex1);
   const l2 = getLuminance(hex2);
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 };
 
 const getWCAGRating = (ratio) => {
@@ -62,9 +57,9 @@ function AccessibilityPanel({
         </div>
 
         <div className="panel-scroll">
-          {/* Color Vision Simulation */}
+          {/* Vision Simulation */}
           <div className="panel-section">
-            <label className="panel-label">Color Vision Simulation</label>
+            <label className="panel-label">Vision Simulation</label>
             <div className="panel-list">
               {COLOR_BLIND_MODES.map((mode) => (
                 <button
@@ -76,14 +71,17 @@ function AccessibilityPanel({
                     e.currentTarget.blur();
                   }}
                 >
-                  <span className="panel-list-item-title">{mode.label}</span>
+                  <div className="panel-list-item-content">
+                    <span className="panel-list-item-title">{mode.label}</span>
+                    {mode.desc && <span className="panel-list-item-desc">{mode.desc}</span>}
+                  </div>
                   {colorBlindMode === mode.id && <div className="panel-check" />}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Text Contrast (New Grid Layout) */}
+          {/* Text Contrast */}
           <div className="panel-section">
             <label className="panel-label">Text Contrast</label>
             <div className="panel-contrast-grid">
@@ -102,15 +100,11 @@ function AccessibilityPanel({
                   >
                     <div className="contrast-card-header">
                       <span className="contrast-aa">Aa</span>
-                      <div className={`contrast-badge ${rating.pass ? 'pass' : 'fail'}`} style={{ borderColor: bestColor }}>
-                        {rating.level}
-                      </div>
+                      <span className="contrast-badge">{rating.level}</span>
                     </div>
                     <div className="contrast-card-footer">
                       <span className="contrast-hex">{color.hex}</span>
-                      <span className="contrast-ratio" style={{ opacity: 0.7 }}>
-                        {bestRatio.toFixed(1)}:1
-                      </span>
+                      <span className="contrast-ratio">{bestRatio.toFixed(1)}:1</span>
                     </div>
                   </div>
                 );
@@ -118,7 +112,7 @@ function AccessibilityPanel({
             </div>
           </div>
 
-          {/* Adjacent Color Contrast (New Pill Layout) */}
+          {/* Adjacent Contrast */}
           <div className="panel-section">
             <label className="panel-label">Adjacent Contrast</label>
             <div className="panel-list">
@@ -128,29 +122,19 @@ function AccessibilityPanel({
                 
                 let status = 'fail';
                 let Icon = X;
-                
-                if (ratio >= 3) {
-                  status = 'pass';
-                  Icon = Check;
-                } else if (ratio >= 1.6) {
-                  status = 'warn';
-                  Icon = AlertTriangle;
-                }
+                if (ratio >= 3) { status = 'pass'; Icon = Check; }
+                else if (ratio >= 1.6) { status = 'warn'; Icon = AlertTriangle; }
 
                 return (
                   <div key={color.id} className="panel-adjacent-row">
-                    {/* The Pill Visualizer */}
                     <div className="panel-adjacent-pill">
                       <div style={{ backgroundColor: color.hex }} />
                       <div style={{ backgroundColor: nextColor.hex }} />
                     </div>
-                    
-                    {/* Score and Status */}
                     <div className="panel-adjacent-info">
                       <span className="adjacent-ratio">{ratio.toFixed(1)}:1</span>
                       <div className={`adjacent-status ${status}`}>
                         <Icon size={10} strokeWidth={3} />
-                        <span>{status === 'warn' ? '' : status === 'pass' ? '' : ''}</span>
                       </div>
                     </div>
                   </div>

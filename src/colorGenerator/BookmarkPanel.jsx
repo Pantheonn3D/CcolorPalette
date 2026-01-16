@@ -8,8 +8,7 @@ const PANEL_WIDTH = 280;
 function BookmarkPanel({ isOpen, onClose, currentUrl }) {
   const [copied, setCopied] = useState(false);
 
-  const isMac =
-    typeof navigator !== 'undefined' &&
+  const isMac = typeof navigator !== 'undefined' && 
     navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
   const handleCopyUrl = async () => {
@@ -39,56 +38,50 @@ function BookmarkPanel({ isOpen, onClose, currentUrl }) {
         </div>
 
         <div className="panel-scroll">
-          {/* Main Instruction */}
-          <div className="bookmark-main">
-            <div className="bookmark-icon-large">
-              <Star size={32} />
+          {/* Main Card */}
+          <div className="bookmark-hero">
+            <div className="bookmark-icon">
+              <Star size={28} />
             </div>
             <h3>Save this palette</h3>
-            <p>
-              Bookmark this page to quickly access your current color palette
-              anytime.
-            </p>
+            <p>Bookmark this page to access your colors anytime.</p>
           </div>
 
           {/* Keyboard Shortcut */}
           <div className="panel-section">
             <label className="panel-label">Keyboard Shortcut</label>
-            <div className="bookmark-shortcut-box">
+            <div className="bookmark-shortcut">
               <div className="bookmark-keys">
                 <kbd>{isMac ? '⌘' : 'Ctrl'}</kbd>
                 <span>+</span>
                 <kbd>D</kbd>
               </div>
-              <span className="bookmark-shortcut-label">Add to bookmarks</span>
+              <span className="bookmark-shortcut-hint">Add to bookmarks</span>
             </div>
           </div>
 
-          {/* Current URL Preview */}
+          {/* URL */}
           <div className="panel-section">
-            <label className="panel-label">Current Palette URL</label>
-            <div className="bookmark-url-box">
+            <label className="panel-label">Palette URL</label>
+            <div className="bookmark-url-row">
               <code className="bookmark-url">{currentUrl}</code>
               <button
-                className={`bookmark-copy-btn ${copied ? 'copied' : ''}`}
+                className={`bookmark-copy ${copied ? 'copied' : ''}`}
                 onClick={handleCopyUrl}
-                title="Copy URL"
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
               </button>
             </div>
-            <p className="panel-hint">
-              This URL contains your exact palette. Share it or bookmark it!
-            </p>
+            <p className="panel-hint">Share or bookmark this unique URL!</p>
           </div>
 
-          {/* Browser Instructions */}
+          {/* Steps */}
           <div className="panel-section">
             <label className="panel-label">Or manually</label>
-            <div className="panel-list">
+            <div className="bookmark-steps">
               <div className="bookmark-step">
                 <span className="bookmark-step-num">1</span>
-                <span>Click the star icon in your browser's address bar</span>
+                <span>Click the star in your address bar</span>
               </div>
               <div className="bookmark-step">
                 <span className="bookmark-step-num">2</span>
@@ -96,15 +89,14 @@ function BookmarkPanel({ isOpen, onClose, currentUrl }) {
               </div>
               <div className="bookmark-step">
                 <span className="bookmark-step-num">3</span>
-                <span>Access your palette anytime from bookmarks</span>
+                <span>Access anytime from bookmarks</span>
               </div>
             </div>
           </div>
 
-          {/* Pro Tip */}
+          {/* Tip */}
           <div className="bookmark-tip">
-            <strong>Pro tip:</strong> Generate a palette you love, then bookmark
-            it. Each palette has a unique URL!
+            <strong>Pro tip:</strong> Each palette has a unique URL! Generate one you love, then bookmark it!
           </div>
         </div>
       </div>

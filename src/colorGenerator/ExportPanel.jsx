@@ -10,8 +10,9 @@ import {
   Wind,
   ChevronDown,
   Settings2,
+  FileJson,
 } from 'lucide-react';
-import { hexToHsl, simulateColorBlindness } from '../utils/colorUtils';
+import { hexToHsl, hexToOklch, simulateColorBlindness } from '../utils/colorUtils';
 import '../styles/PanelStyles.css';
 import './ExportPanel.css';
 import { trackEvent } from '../utils/analytics';
@@ -19,7 +20,65 @@ import { submitToIndexNow } from '../utils/seo';
 
 const PANEL_WIDTH = 320;
 
+// ============================================
+// COLOR NAMING FOR "SMART" SCHEME
+// ============================================
+
+const getColorName = (h, s, l) => {
+  h = ((h % 360) + 360) % 360;
+  
+  // Achromatic
+  if (s < 8) {
+    if (l < 15) return 'black';
+    if (l < 30) return 'charcoal';
+    if (l < 45) return 'gray';
+    if (l < 60) return 'silver';
+    if (l < 75) return 'light-gray';
+    if (l < 90) return 'off-white';
+    return 'white';
+  }
+
+  // Get modifier
+  let prefix = '';
+  if (l < 25) prefix = 'dark-';
+  else if (l > 80) prefix = 'pale-';
+  else if (l > 70) prefix = 'light-';
+  else if (s < 35) prefix = 'muted-';
+  else if (s > 75) prefix = 'vivid-';
+
+  // Base color by hue
+  let base;
+  if (h >= 345 || h < 10) base = l < 35 ? 'burgundy' : l > 70 ? 'rose' : 'red';
+  else if (h < 25) base = l < 40 ? 'rust' : l > 70 ? 'peach' : 'vermilion';
+  else if (h < 40) base = l < 40 ? 'brown' : l > 70 ? 'apricot' : 'orange';
+  else if (h < 55) base = l < 45 ? 'bronze' : s > 60 ? 'amber' : 'gold';
+  else if (h < 70) base = l < 45 ? 'olive' : l > 75 ? 'lemon' : 'yellow';
+  else if (h < 85) base = l < 45 ? 'moss' : 'chartreuse';
+  else if (h < 100) base = l < 40 ? 'forest' : 'green';
+  else if (h < 140) base = l < 35 ? 'hunter' : l > 70 ? 'mint' : s > 50 ? 'emerald' : 'sage';
+  else if (h < 170) base = l < 40 ? 'dark-teal' : l > 70 ? 'aquamarine' : 'teal';
+  else if (h < 195) base = l < 40 ? 'dark-cyan' : 'cyan';
+  else if (h < 220) base = l < 40 ? 'prussian' : l > 70 ? 'sky' : 'cerulean';
+  else if (h < 250) base = l < 35 ? 'navy' : l > 70 ? 'periwinkle' : 'blue';
+  else if (h < 280) base = l < 35 ? 'indigo' : l > 70 ? 'lavender' : 'violet';
+  else if (h < 310) base = l < 35 ? 'eggplant' : l > 70 ? 'lilac' : 'purple';
+  else if (h < 330) base = l < 40 ? 'dark-magenta' : l > 70 ? 'orchid' : 'magenta';
+  else base = l < 40 ? 'maroon' : l > 75 ? 'pink' : 'rose';
+
+  // Avoid redundant prefixes
+  if (prefix && base.includes(prefix.replace('-', ''))) return base;
+  return prefix ? `${prefix}${base}` : base;
+};
+
+// ============================================
+// NAMING SCHEMES
+// ============================================
+
 const NAMING_SCHEMES = {
+  smart: (i, hexColors) => {
+    const hsl = hexToHsl(hexColors[i]);
+    return getColorName(hsl.h, hsl.s, hsl.l);
+  },
   numbered: (i) => `color-${i + 1}`,
   semantic: (i) =>
     ['primary', 'secondary', 'tertiary', 'accent', 'highlight', 'muted', 'subtle', 'background', 'surface', 'border'][i] ||
@@ -52,16 +111,13 @@ function ExportPanel({
   colorBlindMode,
 }) {
   const [copiedOption, setCopiedOption] = useState(null);
-  const [namingScheme, setNamingScheme] = useState('numbered');
+  const [namingScheme, setNamingScheme] = useState('smart');
   const [showSettings, setShowSettings] = useState(false);
   const [cssFormat, setCssFormat] = useState('vars');
   const [tailwindFormat, setTailwindFormat] = useState('v4');
-
-  // ADD THIS LINE HERE (Ensure it is above the useMemo)
   const [applySimulation, setApplySimulation] = useState(false);
 
   const rawHexColors = colors.map((c) => c.hex);
-  const getName = NAMING_SCHEMES[namingScheme];
 
   // Apply simulation if toggled AND a mode is selected
   const hexColors = useMemo(() => {
@@ -71,6 +127,23 @@ function ExportPanel({
     return rawHexColors;
   }, [rawHexColors, applySimulation, colorBlindMode]);
 
+  // Get color names for preview and exports
+  const colorNames = useMemo(() => 
+    hexColors.map(hex => {
+      const hsl = hexToHsl(hex);
+      return getColorName(hsl.h, hsl.s, hsl.l);
+    }),
+    [rawHexColors]
+  );
+
+  // Get name based on current scheme
+  const getName = (i) => {
+    if (namingScheme === 'smart') {
+      return NAMING_SCHEMES.smart(i, rawHexColors);
+    }
+    return NAMING_SCHEMES[namingScheme](i);
+  };
+
   const showCopied = (option) => {
     setCopiedOption(option);
     setTimeout(() => setCopiedOption(null), 2000);
@@ -79,11 +152,24 @@ function ExportPanel({
   const getColorData = () =>
     hexColors.map((hex, i) => {
       const hsl = hexToHsl(hex);
+      const oklch = hexToOklch(hex);
       return {
         name: getName(i),
+        colorName: colorNames[i],
         hex,
+        rgb: {
+          r: parseInt(hex.slice(1, 3), 16),
+          g: parseInt(hex.slice(3, 5), 16),
+          b: parseInt(hex.slice(5, 7), 16),
+        },
         hsl: { h: Math.round(hsl.h), s: Math.round(hsl.s), l: Math.round(hsl.l) },
         hslString: `hsl(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)`,
+        oklch: {
+          l: Number((oklch.L * 100).toFixed(1)),
+          c: Number(oklch.C.toFixed(3)),
+          h: Math.round(oklch.h),
+        },
+        oklchString: `oklch(${(oklch.L * 100).toFixed(1)}% ${oklch.C.toFixed(3)} ${Math.round(oklch.h)})`,
         contrastOnWhite: getContrastRatio(hex, '#FFFFFF'),
         contrastOnBlack: getContrastRatio(hex, '#000000'),
       };
@@ -118,10 +204,10 @@ function ExportPanel({
       action: () => {
         let css;
         if (cssFormat === 'vars') {
-          css = `:root {\n${hexColors.map((c, i) => `  --${getName(i)}: ${c};`).join('\n')}\n}`;
+          css = `:root {\n${hexColors.map((c, i) => `  --${getName(i)}: ${c}; /* ${colorNames[i]} */`).join('\n')}\n}`;
         } else {
           css = hexColors
-            .map((c, i) => `.bg-${getName(i)} { background-color: ${c}; }\n.text-${getName(i)} { color: ${c}; }`)
+            .map((c, i) => `/* ${colorNames[i]} */\n.bg-${getName(i)} { background-color: ${c}; }\n.text-${getName(i)} { color: ${c}; }`)
             .join('\n\n');
         }
         navigator.clipboard.writeText(css);
@@ -135,36 +221,31 @@ function ExportPanel({
       description: getTailwindDescription(),
       action: () => {
         let config;
+        const getV4Name = (i) => getName(i).replace(/^color-/, '');
         
         if (tailwindFormat === 'v4') {
-          // Tailwind v4 CSS-first configuration
-          // HELPER: Strip "color-" prefix if present to avoid "--color-color-1"
-          const getV4Name = (i) => getName(i).replace(/^color-/, '');
-          
           config = `@import "tailwindcss";
 
 @theme {
   /* Usage: bg-${getV4Name(0)}, text-${getV4Name(1)} */
-${hexColors.map((c, i) => `  --color-${getV4Name(i)}: ${c};`).join('\n')}
+${hexColors.map((c, i) => `  --color-${getV4Name(i)}: ${c}; /* ${colorNames[i]} */`).join('\n')}
 }`;
         } else if (tailwindFormat === 'v3-config') {
-          // Tailwind v3 JS Configuration
           config = `// tailwind.config.js
 module.exports = {
   theme: {
     extend: {
       colors: {
-${hexColors.map((c, i) => `        '${getName(i)}': '${c}',`).join('\n')}
+${hexColors.map((c, i) => `        '${getName(i)}': '${c}', // ${colorNames[i]}`).join('\n')}
       },
     },
   },
 }`;
         } else {
-          // Tailwind v3 CSS Variables + Config
           config = `/* Add to your CSS */
 @layer base {
   :root {
-${hexColors.map((c, i) => `    --${getName(i)}: ${c};`).join('\n')}
+${hexColors.map((c, i) => `    --${getName(i)}: ${c}; /* ${colorNames[i]} */`).join('\n')}
   }
 }
 
@@ -190,11 +271,11 @@ ${hexColors.map((c, i) => `        '${getName(i)}': 'var(--${getName(i)})',`).jo
       description: 'Variables + Map',
       action: () => {
         const scss = `// Individual variables
-${hexColors.map((c, i) => `$${getName(i)}: ${c};`).join('\n')}
+${hexColors.map((c, i) => `$${getName(i)}: ${c}; // ${colorNames[i]}`).join('\n')}
 
 // As a map
 $palette: (
-${hexColors.map((c, i) => `  '${getName(i)}': ${c},`).join('\n')}
+${hexColors.map((c, i) => `  '${getName(i)}': ${c}, // ${colorNames[i]}`).join('\n')}
 );`;
         navigator.clipboard.writeText(scss);
         showCopied('scss');
@@ -215,20 +296,48 @@ ${hexColors.map((c, i) => `  '${getName(i)}': ${c},`).join('\n')}
             darkModeFriendly: constraints?.darkModeFriendly || false,
           },
           generated: new Date().toISOString(),
+          source: 'ccolorpalette.com',
         };
         navigator.clipboard.writeText(JSON.stringify(data, null, 2));
         showCopied('json');
       },
     },
     {
+      id: 'tokens',
+      icon: FileJson,
+      label: 'Tokens',
+      description: 'Design tokens',
+      action: () => {
+        const tokens = {
+          color: {
+            palette: hexColors.reduce((acc, hex, i) => {
+              acc[getName(i)] = {
+                $value: hex,
+                $type: 'color',
+                $description: colorNames[i],
+              };
+              return acc;
+            }, {}),
+          },
+        };
+        navigator.clipboard.writeText(JSON.stringify(tokens, null, 2));
+        showCopied('tokens');
+      },
+    },
+    {
       id: 'array',
       icon: Code,
-      label: 'JS Object',
-      description: 'Named object',
+      label: 'JS/TS',
+      description: 'Typed object',
       action: () => {
-        const obj = `const palette = {\n${hexColors
-          .map((c, i) => `  ${getName(i).replace(/-/g, '_')}: '${c}',`)
-          .join('\n')}\n};`;
+        const obj = `export const palette = {
+${hexColors.map((c, i) => {
+  const key = getName(i).replace(/-([a-z])/g, (_, l) => l.toUpperCase());
+  return `  /** ${colorNames[i]} */\n  ${key}: '${c}',`;
+}).join('\n')}
+} as const;
+
+export type PaletteKey = keyof typeof palette;`;
         navigator.clipboard.writeText(obj);
         showCopied('array');
       },
@@ -244,12 +353,14 @@ ${hexColors.map((c, i) => `  '${getName(i)}': ${c},`).join('\n')}
         const colorWidth = width / hexColors.length;
 
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
+  <title>${colorNames.join(', ')} Color Palette</title>
 ${hexColors.map((c, i) => `  <rect x="${i * colorWidth}" y="0" width="${colorWidth}" height="${height}" fill="${c}"/>`).join('\n')}
 ${hexColors.map((c, i) => {
   const hsl = hexToHsl(c);
-  const textColor = hsl.l > 60 ? '#000000' : '#FFFFFF';
+  const textColor = hsl.l > 55 ? '#000000' : '#FFFFFF';
   const x = i * colorWidth + colorWidth / 2;
-  return `  <text x="${x}" y="${height - 30}" text-anchor="middle" fill="${textColor}" font-family="monospace" font-size="14" font-weight="bold">${c}</text>`;
+  return `  <text x="${x}" y="${height - 50}" text-anchor="middle" fill="${textColor}" font-family="system-ui, sans-serif" font-size="14">${colorNames[i]}</text>
+  <text x="${x}" y="${height - 26}" text-anchor="middle" fill="${textColor}" font-family="monospace" font-size="16" font-weight="bold">${c}</text>`;
 }).join('\n')}
 </svg>`;
 
@@ -280,13 +391,20 @@ ${hexColors.map((c, i) => {
           ctx.fillRect(i * colorWidth, 0, colorWidth, canvas.height);
         });
 
-        ctx.font = 'bold 16px monospace';
         ctx.textAlign = 'center';
         hexColors.forEach((color, i) => {
           const hsl = hexToHsl(color);
-          ctx.fillStyle = hsl.l > 60 ? '#000000' : '#FFFFFF';
+          const textColor = hsl.l > 55 ? '#000000' : '#FFFFFF';
           const x = i * colorWidth + colorWidth / 2;
-          ctx.fillText(color, x, canvas.height - 30);
+
+          // Color name
+          ctx.font = '500 14px system-ui, sans-serif';
+          ctx.fillStyle = textColor;
+          ctx.fillText(colorNames[i], x, canvas.height - 50);
+
+          // Hex code
+          ctx.font = 'bold 16px monospace';
+          ctx.fillText(color, x, canvas.height - 26);
         });
 
         ctx.font = '12px sans-serif';
@@ -356,7 +474,7 @@ ${hexColors.map((c, i) => {
 
               <div className="export-setting">
                 <label>CSS Format</label>
-                <div className="export-setting-options">
+                <div className="export-setting-options two-col">
                   <button
                     className={`panel-btn ${cssFormat === 'vars' ? 'active' : ''}`}
                     onClick={() => setCssFormat('vars')}
@@ -375,7 +493,7 @@ ${hexColors.map((c, i) => {
               <div className="export-setting">
                 <label>Tailwind Version</label>
                 <div className="export-setting-options three-col">
-                   <button
+                  <button
                     className={`panel-btn ${tailwindFormat === 'v4' ? 'active' : ''}`}
                     onClick={() => setTailwindFormat('v4')}
                     title="CSS @theme variable configuration"
@@ -398,37 +516,34 @@ ${hexColors.map((c, i) => {
                   </button>
                 </div>
               </div>
-              <div className="export-setting">
-                <label>Vision Simulation</label>
-                <div className="export-setting-options">
-                  <button
-                    className={`panel-btn ${!applySimulation ? 'active' : ''}`}
-                    onClick={() => setApplySimulation(false)}
-                  >
-                    Raw Colors
-                  </button>
-                  <button
-                    className={`panel-btn ${applySimulation ? 'active' : ''}`}
-                    onClick={() => {
-                      setApplySimulation(true);
-                      trackEvent('enable_colorblind_export', { mode: colorBlindMode });
-                    }}
-                    // Grey out and disable if vision mode is normal
-                    disabled={colorBlindMode === 'normal'}
-                    style={{ 
-                      opacity: colorBlindMode === 'normal' ? 0.5 : 1,
-                    }}
-                    title={colorBlindMode === 'normal' ? 'Select a vision mode in Accessibility panel first' : ''}
-                  >
-                    Simulated
-                  </button>
+
+              {colorBlindMode !== 'normal' && (
+                <div className="export-setting">
+                  <label>Vision Simulation</label>
+                  <div className="export-setting-options two-col">
+                    <button
+                      className={`panel-btn ${!applySimulation ? 'active' : ''}`}
+                      onClick={() => setApplySimulation(false)}
+                    >
+                      Original
+                    </button>
+                    <button
+                      className={`panel-btn ${applySimulation ? 'active' : ''}`}
+                      onClick={() => {
+                        setApplySimulation(true);
+                        trackEvent('enable_colorblind_export', { mode: colorBlindMode });
+                      }}
+                    >
+                      Simulated
+                    </button>
+                  </div>
+                  {applySimulation && (
+                    <span className="export-setting-preview">
+                      Exporting for: {colorBlindMode.charAt(0).toUpperCase() + colorBlindMode.slice(1)}
+                    </span>
+                  )}
                 </div>
-                {applySimulation && colorBlindMode !== 'normal' && (
-                  <span className="export-setting-preview">
-                    Exporting for: {colorBlindMode.charAt(0).toUpperCase() + colorBlindMode.slice(1)}
-                  </span>
-                )}
-              </div>
+              )}
             </div>
           )}
 
@@ -475,7 +590,15 @@ ${hexColors.map((c, i) => {
                   key={i}
                   className="panel-preview-color"
                   style={{ backgroundColor: color }}
+                  title={`${colorNames[i]} (${rawHexColors[i]})`}  // <-- Use rawHexColors for the hex in tooltip
                 />
+              ))}
+            </div>
+            <div className="panel-preview-names">
+              {colorNames.map((name, i) => (
+                <span key={i} className="panel-preview-name">
+                  {name}
+                </span>
               ))}
             </div>
             <div className="panel-preview-hexes">

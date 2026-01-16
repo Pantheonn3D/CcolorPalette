@@ -45,6 +45,26 @@ const MIN_COL_PX = 128;
 const MOBILE_BREAKPOINT = 768;
 const MOBILE_SHADE_COUNT = 6;
 const DESKTOP_SHADE_COUNT = 20;
+const HEADER_OFFSET = 100;
+
+// Valid mood options - keep in sync with MethodPanel
+const VALID_MOODS = [
+  'any',
+  'vibrant',
+  'bright',
+  'pastel',
+  'soft',
+  'muted',
+  'moody',
+  'dark',
+  'warm',
+  'cool',
+  'earthy',
+  'playful',
+  'elegant',
+  'retro',
+  'neon',
+];
 
 // Helpers
 const generateId = () => Math.random().toString(36).substring(2, 11);
@@ -106,10 +126,10 @@ function ColorGenerator() {
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  // FIX 1: Create a ref to track the live history index
+  // Ref to track the live history index
   const historyIndexRef = useRef(historyIndex);
 
-  // FIX 2: Keep the ref synced with state
+  // Keep the ref synced with state
   useEffect(() => {
     historyIndexRef.current = historyIndex;
   }, [historyIndex]);
@@ -137,8 +157,8 @@ function ColorGenerator() {
   const [removingId, setRemovingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [activeShadeId, setActiveShadeId] = useState(null);
-  const [editingId, setEditingId] = useState(null); // ID of the color being edited
-  const [editValue, setEditValue] = useState('');   // Temporary value of the input
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
 
   // Drag State
   const [dragState, setDragState] = useState(null);
@@ -203,10 +223,9 @@ function ColorGenerator() {
         const currentIndex = historyIndexRef.current;
         const newHistory = prev.slice(0, currentIndex + 1);
         
-        // NEW: Store as an object so HistoryPanel can see the vision mode
         newHistory.push({
           colors: newColors,
-          visionMode: colorBlindMode // This captures the current state
+          visionMode: colorBlindMode
         });
         
         if (newHistory.length > MAX_HISTORY) {
@@ -220,7 +239,7 @@ function ColorGenerator() {
         return nextIndex >= MAX_HISTORY ? MAX_HISTORY - 1 : nextIndex;
       });
     },
-    [historyIndex, colorBlindMode] // Added colorBlindMode to dependencies
+    [colorBlindMode]
   );
 
   const undo = useCallback(() => {
@@ -254,17 +273,13 @@ function ColorGenerator() {
 
       if (unlockedCount <= 0) return;
 
-      // FIX: Calculate a "seed" from the locked colors
       let generationConstraints = { ...constraints };
       
       if (lockedColors.length > 0) {
-        // Use the first locked color as the anchor for harmony
-        // (You could also average them, but using the first is safer)
         const lockedHsl = hexToHsl(lockedColors[0].hex);
         generationConstraints.baseHue = lockedHsl.h;
       }
 
-      // Pass the updated constraints
       const newPalette = generateRandomPalette(generationMode, unlockedCount, generationConstraints);
       
       const newColors = newPalette.map((hex) => ({
@@ -350,9 +365,9 @@ function ColorGenerator() {
   // --- Hex Editing Handlers ---
 
   const handleHexClick = (id, currentHex, e) => {
-    e.stopPropagation(); // Prevent dragging or other card clicks
+    e.stopPropagation();
     setEditingId(id);
-    setEditValue(currentHex.replace('#', '')); // Show without hash for easier typing
+    setEditValue(currentHex.replace('#', ''));
   };
 
   const commitHexChange = (id) => {
@@ -361,28 +376,24 @@ function ColorGenerator() {
       return;
     }
 
-    // Validate Hex (allow 3 or 6 chars)
     const validHexPattern = /^([0-9A-F]{3}){1,2}$/i;
     let cleanHex = editValue.replace(/[^0-9A-F]/gi, '').toUpperCase();
 
     if (validHexPattern.test(cleanHex)) {
-      // Expand 3-char hex to 6-char
       if (cleanHex.length === 3) {
         cleanHex = cleanHex.split('').map(char => char + char).join('');
       }
       
       const newFullHex = `#${cleanHex}`;
       
-      // Update state: Set new hex AND lock the color
       updateColors(colors.map(c => {
         if (c.id === id) {
-          return { ...c, hex: newFullHex, locked: true }; // Lock it!
+          return { ...c, hex: newFullHex, locked: true };
         }
         return c;
       }));
     } 
     
-    // Reset editing state
     setEditingId(null);
     setEditValue('');
   };
@@ -392,7 +403,6 @@ function ColorGenerator() {
       e.preventDefault();
       commitHexChange(id);
     } else if (e.key === 'Escape') {
-      // Cancel editing
       setEditingId(null);
       setEditValue('');
     }
@@ -433,138 +443,123 @@ function ColorGenerator() {
     };
   }, [activeShadeId]);
 
-  // Constants - add this new one
-const HEADER_OFFSET = 100; // Height reserved for floating header in stacked mode
+  // Updated getColumnSize function
+  const getColumnSize = useCallback(() => {
+    if (!containerRef.current) return 0;
 
+    const vertical = isVerticalLayout();
+    const isMobile = isMobileView();
 
-// Updated getColumnSize function
-const getColumnSize = useCallback(() => {
-  if (!containerRef.current) return 0;
+    if (vertical) {
+      const colorsArea = colorsAreaRef.current;
+      if (!colorsArea) return 0;
 
-  const vertical = isVerticalLayout();
-  const isMobile = isMobileView();
+      const areaHeight = colorsArea.offsetHeight;
 
-  if (vertical) {
-    const colorsArea = colorsAreaRef.current;
-    if (!colorsArea) return 0;
+      if (stackColors && !isMobile && colors.length > 0) {
+        const effectiveHeight = areaHeight - HEADER_OFFSET;
+        return effectiveHeight / colors.length;
+      }
 
-    const areaHeight = colorsArea.offsetHeight;
+      return areaHeight / colors.length;
+    } else {
+      let panelWidth = 0;
+      if (isMethodOpen) panelWidth += 240;
+      if (isA11yOpen) panelWidth += 280;
+      if (isHistoryOpen) panelWidth += 260;
+      if (isExportOpen) panelWidth += 320;
+      if (isBookmarkOpen) panelWidth += 280;
 
-    // On desktop stacked mode, the first color has extra padding for the header
-    // We need to calculate the "uniform" size for drag calculations
-    if (stackColors && !isMobile && colors.length > 0) {
-      // Subtract the header offset from total height, then divide evenly
-      const effectiveHeight = areaHeight - HEADER_OFFSET;
-      return effectiveHeight / colors.length;
+      const availableWidth = containerRef.current.offsetWidth - panelWidth;
+      return availableWidth / colors.length;
     }
+  }, [
+    colors.length,
+    isMethodOpen,
+    isA11yOpen,
+    isHistoryOpen,
+    isExportOpen,
+    isBookmarkOpen,
+    isVerticalLayout,
+    stackColors,
+  ]);
 
-    // Mobile - all colors are uniform
-    return areaHeight / colors.length;
-  } else {
-    // Horizontal mode
-    let panelWidth = 0;
-    if (isMethodOpen) panelWidth += 240;
-    if (isA11yOpen) panelWidth += 280;
-    if (isHistoryOpen) panelWidth += 260;
-    if (isExportOpen) panelWidth += 320;
-    if (isBookmarkOpen) panelWidth += 280;
+  // Updated handleDragStart to account for header offset
+  const handleDragStart = (e, id, index) => {
+    if (e.type === 'touchstart') e.preventDefault();
 
-    const availableWidth = containerRef.current.offsetWidth - panelWidth;
-    return availableWidth / colors.length;
-  }
-}, [
-  colors.length,
-  isMethodOpen,
-  isA11yOpen,
-  isHistoryOpen,
-  isExportOpen,
-  isBookmarkOpen,
-  isVerticalLayout,
-  stackColors,
-]);
-
-// Updated handleDragStart to account for header offset
-const handleDragStart = (e, id, index) => {
-  if (e.type === 'touchstart') e.preventDefault();
-
-  const columnSize = getColumnSize();
-  const vertical = isVerticalLayout();
-  const isMobile = isMobileView();
-
-  let clientPos;
-  if (e.type === 'touchstart') {
-    clientPos = vertical ? e.touches[0].clientY : e.touches[0].clientX;
-  } else {
-    e.preventDefault();
-    clientPos = vertical ? e.clientY : e.clientX;
-  }
-
-  // In desktop stacked mode, adjust startPos to account for header offset
-  // This makes the drag math work correctly
-  let adjustedStartPos = clientPos;
-  if (stackColors && !isMobile && vertical) {
-    // The first color starts after the header offset
-    // Normalize the position as if all colors were uniform from the top
-    const colorsArea = colorsAreaRef.current;
-    if (colorsArea) {
-      const areaRect = colorsArea.getBoundingClientRect();
-      const relativePos = clientPos - areaRect.top - HEADER_OFFSET;
-      adjustedStartPos = areaRect.top + relativePos;
-    }
-  }
-
-  setDragState({
-    id,
-    startIndex: index,
-    currentIndex: index,
-    startPos: adjustedStartPos,
-    currentPos: adjustedStartPos,
-    columnSize,
-    isMobile: vertical,
-    isDesktopStacked: stackColors && !isMobile && vertical,
-    areaTop: colorsAreaRef.current?.getBoundingClientRect().top || 0,
-  });
-};
-
-// Updated handleMouseMove to handle desktop stacked mode correctly
-const handleMouseMove = useCallback(
-  (e) => {
-    if (!dragState || isSnapping) return;
-
-    const { startIndex, columnSize, isMobile, isDesktopStacked, areaTop } = dragState;
+    const columnSize = getColumnSize();
+    const vertical = isVerticalLayout();
+    const isMobile = isMobileView();
 
     let clientPos;
-    if (e.type === 'touchmove') {
-      clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
+    if (e.type === 'touchstart') {
+      clientPos = vertical ? e.touches[0].clientY : e.touches[0].clientX;
     } else {
-      clientPos = isMobile ? e.clientY : e.clientX;
+      e.preventDefault();
+      clientPos = vertical ? e.clientY : e.clientX;
     }
 
-    // Adjust position for desktop stacked mode
-    let adjustedCurrentPos = clientPos;
-    if (isDesktopStacked) {
-      const relativePos = clientPos - areaTop - HEADER_OFFSET;
-      adjustedCurrentPos = areaTop + relativePos;
+    let adjustedStartPos = clientPos;
+    if (stackColors && !isMobile && vertical) {
+      const colorsArea = colorsAreaRef.current;
+      if (colorsArea) {
+        const areaRect = colorsArea.getBoundingClientRect();
+        const relativePos = clientPos - areaRect.top - HEADER_OFFSET;
+        adjustedStartPos = areaRect.top + relativePos;
+      }
     }
 
-    let delta = adjustedCurrentPos - dragState.startPos;
+    setDragState({
+      id,
+      startIndex: index,
+      currentIndex: index,
+      startPos: adjustedStartPos,
+      currentPos: adjustedStartPos,
+      columnSize,
+      isMobile: vertical,
+      isDesktopStacked: stackColors && !isMobile && vertical,
+      areaTop: colorsAreaRef.current?.getBoundingClientRect().top || 0,
+    });
+  };
 
-    // Clamp delta to valid range
-    const maxNegativeOffset = -startIndex * columnSize;
-    const maxPositiveOffset = (colors.length - 1 - startIndex) * columnSize;
-    delta = Math.max(maxNegativeOffset, Math.min(maxPositiveOffset, delta));
+  // Updated handleMouseMove to handle desktop stacked mode correctly
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!dragState || isSnapping) return;
 
-    const indexOffset = Math.round(delta / columnSize);
-    const newIndex = Math.max(0, Math.min(colors.length - 1, startIndex + indexOffset));
+      const { startIndex, columnSize, isMobile, isDesktopStacked, areaTop } = dragState;
 
-    setDragState((prev) => ({
-      ...prev,
-      currentPos: adjustedCurrentPos,
-      currentIndex: newIndex,
-    }));
-  },
-  [dragState, isSnapping, colors.length]
-);
+      let clientPos;
+      if (e.type === 'touchmove') {
+        clientPos = isMobile ? e.touches[0].clientY : e.touches[0].clientX;
+      } else {
+        clientPos = isMobile ? e.clientY : e.clientX;
+      }
+
+      let adjustedCurrentPos = clientPos;
+      if (isDesktopStacked) {
+        const relativePos = clientPos - areaTop - HEADER_OFFSET;
+        adjustedCurrentPos = areaTop + relativePos;
+      }
+
+      let delta = adjustedCurrentPos - dragState.startPos;
+
+      const maxNegativeOffset = -startIndex * columnSize;
+      const maxPositiveOffset = (colors.length - 1 - startIndex) * columnSize;
+      delta = Math.max(maxNegativeOffset, Math.min(maxPositiveOffset, delta));
+
+      const indexOffset = Math.round(delta / columnSize);
+      const newIndex = Math.max(0, Math.min(colors.length - 1, startIndex + indexOffset));
+
+      setDragState((prev) => ({
+        ...prev,
+        currentPos: adjustedCurrentPos,
+        currentIndex: newIndex,
+      }));
+    },
+    [dragState, isSnapping, colors.length]
+  );
 
   const handleMouseUp = useCallback(() => {
     if (!dragState) return;
@@ -615,81 +610,78 @@ const handleMouseMove = useCallback(
     };
   }, [dragState, handleMouseMove, handleMouseUp]);
 
-// Updated getColumnStyle to handle desktop stacked mode
-const getColumnStyle = (index, id) => {
-  if (!dragState) return {};
+  // Updated getColumnStyle to handle desktop stacked mode
+  const getColumnStyle = (index, id) => {
+    if (!dragState) return {};
 
-  const { startIndex, currentIndex, startPos, currentPos, columnSize, isMobile, isDesktopStacked } =
-    dragState;
-  const isDragged = id === dragState.id;
-  const transformProp = isMobile ? 'translateY' : 'translateX';
+    const { startIndex, currentIndex, startPos, currentPos, columnSize, isMobile } =
+      dragState;
+    const isDragged = id === dragState.id;
+    const transformProp = isMobile ? 'translateY' : 'translateX';
 
-  if (isDragged) {
-    if (isSnapping) {
-      const snapOffset = (currentIndex - startIndex) * columnSize;
+    if (isDragged) {
+      if (isSnapping) {
+        const snapOffset = (currentIndex - startIndex) * columnSize;
+        return {
+          transform: `${transformProp}(${snapOffset}px)`,
+          zIndex: 100,
+          transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        };
+      }
+
+      const offset = currentPos - startPos;
       return {
-        transform: `${transformProp}(${snapOffset}px)`,
+        transform: `${transformProp}(${offset}px)`,
         zIndex: 100,
-        transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        transition: 'none',
       };
     }
 
-    const offset = currentPos - startPos;
-    return {
-      transform: `${transformProp}(${offset}px)`,
-      zIndex: 100,
-      transition: 'none',
-    };
-  }
-
-  // Calculate shift for non-dragged items
-  let shift = 0;
-  if (startIndex < currentIndex && index > startIndex && index <= currentIndex) {
-    shift = -1;
-  }
-  if (startIndex > currentIndex && index >= currentIndex && index < startIndex) {
-    shift = 1;
-  }
-
-  return {
-    transform: shift !== 0 ? `${transformProp}(${shift * columnSize}px)` : `${transformProp}(0)`,
-    transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-  };
-};
-
-// Updated layout detection - ensure mobile always works correctly
-useEffect(() => {
-  const el = colorsAreaRef.current;
-  if (!el) return;
-
-  const update = () => {
-    // On mobile, don't use stackColors - CSS handles the layout
-    // stackColors is ONLY for desktop narrow-width scenarios
-    if (isMobileView()) {
-      setStackColors(false);
-      return;
+    let shift = 0;
+    if (startIndex < currentIndex && index > startIndex && index <= currentIndex) {
+      shift = -1;
+    }
+    if (startIndex > currentIndex && index >= currentIndex && index < startIndex) {
+      shift = 1;
     }
 
-    const w = el.getBoundingClientRect().width;
-    const perCol = w / Math.max(1, colors.length);
-    setStackColors(perCol < MIN_COL_PX);
+    return {
+      transform: shift !== 0 ? `${transformProp}(${shift * columnSize}px)` : `${transformProp}(0)`,
+      transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    };
   };
 
-  update();
+  // Layout detection
+  useEffect(() => {
+    const el = colorsAreaRef.current;
+    if (!el) return;
 
-  let ro;
-  if (typeof ResizeObserver !== 'undefined') {
-    ro = new ResizeObserver(update);
-    ro.observe(el);
-  } else {
-    window.addEventListener('resize', update);
-  }
+    const update = () => {
+      if (isMobileView()) {
+        setStackColors(false);
+        return;
+      }
 
-  return () => {
-    if (ro) ro.disconnect();
-    else window.removeEventListener('resize', update);
-  };
-}, [colors.length]);
+      const w = el.getBoundingClientRect().width;
+      const perCol = w / Math.max(1, colors.length);
+      setStackColors(perCol < MIN_COL_PX);
+    };
+
+    update();
+
+    let ro;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(update);
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', update);
+    }
+
+    return () => {
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', update);
+    };
+  }, [colors.length]);
 
   // URL Parsing on Mount
   useEffect(() => {
@@ -726,7 +718,7 @@ useEffect(() => {
             hex,
             locked: false,
           }));
-          setHistory([initialColors]);
+          setHistory([{ colors: initialColors, visionMode: 'normal' }]);
           setHistoryIndex(0);
         }
       }
@@ -741,9 +733,12 @@ useEffect(() => {
       if (['auto', 'mono', 'analogous', 'complementary', 'splitComplementary', 'triadic'].includes(mode)) {
         setGenerationMode(mode);
       }
-      if (['any', 'muted', 'pastel', 'vibrant', 'dark'].includes(mood)) {
+      
+      // FIXED: Now validates against all mood options
+      if (VALID_MOODS.includes(mood)) {
         setConstraints((prev) => ({ ...prev, mood }));
       }
+      
       if (!isNaN(contrast) && contrast >= 1 && contrast <= 4.5) {
         setConstraints((prev) => ({ ...prev, minContrast: contrast }));
       }
@@ -787,6 +782,9 @@ useEffect(() => {
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't trigger generation if user is typing in an input
+      if (editingId) return;
+      
       if (e.code === 'Space') {
         if (document.activeElement instanceof HTMLButtonElement) {
           document.activeElement.blur();
@@ -806,12 +804,14 @@ useEffect(() => {
       }
       if (e.key === 'Escape') {
         setOpenPanels([]);
+        setEditingId(null);
+        setEditValue('');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, colors.length, generatePalette]);
+  }, [undo, redo, colors.length, generatePalette, editingId]);
 
   // Color Display
   const getDisplayColor = (hex) => {
@@ -828,10 +828,38 @@ useEffect(() => {
 
   const contentSections = useMemo(() => formatContentSections(seoData.content), [seoData.content]);
 
+  // Generate related palette links based on current palette
+  const relatedPaletteLinks = useMemo(() => {
+    if (colors.length === 0) return [];
+    
+    // Use the first color's hue as a base for generating related palettes
+    const baseHsl = hexToHsl(colors[0].hex);
+    const links = [];
+    
+    // Generate 6 related palettes with different hue offsets
+    const hueOffsets = [30, 60, 90, 180, 210, 270];
+    
+    for (let i = 0; i < 6; i++) {
+      const offsetHue = (baseHsl.h + hueOffsets[i]) % 360;
+      const relatedPalette = generateRandomPalette('analogous', 5, { 
+        baseHue: offsetHue,
+        mood: constraints.mood !== 'any' ? constraints.mood : 'any'
+      });
+      
+      links.push({
+        hexes: relatedPalette.map(h => h.replace('#', '')).join('-'),
+        label: `${seoData.traits?.temperature || 'Color'} Palette ${i + 1}`
+      });
+    }
+    
+    return links;
+  }, [colors, constraints.mood, seoData.traits?.temperature]);
+
   return (
     <div className="app-wrapper">
       <Helmet>
         <title>{seoData.title} | CColorPalette</title>
+        <meta name="description" content={seoData.meta} />
       </Helmet>
 
       <div className="page-section visible">
@@ -852,6 +880,7 @@ useEffect(() => {
           isBookmarkOpen={isBookmarkOpen}
           logoColors={colors}
           onLogoClick={() => generatePalette(colors.length)}
+          historyCount={history.length}
         />
 
         <main className="generator-container" ref={containerRef}>
@@ -1024,24 +1053,20 @@ useEffect(() => {
                         <div className="color-content">
                           {editingId === color.id ? (
                             <div className="hex-input-wrapper">
-                                <input
-                                  autoFocus
-                                  className="hex-input"
-                                  style={{ color: textColor }}
-                                  value={editValue}
-                                  onChange={(e) => {
-                                    // 1. Strip the '#' and any non-hex characters immediately
-                                    let val = e.target.value.replace(/[^0-9A-F]/gi, '').toUpperCase();
-                                    
-                                    // 2. Limit to 6 characters so it doesn't overflow
-                                    if (val.length > 6) val = val.slice(0, 6);
-                                    
-                                    setEditValue(val);
-                                  }}
-                                  onBlur={() => commitHexChange(color.id)}
-                                  onKeyDown={(e) => handleHexKeyDown(e, color.id)}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
+                              <input
+                                autoFocus
+                                className="hex-input"
+                                style={{ color: textColor }}
+                                value={editValue}
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/[^0-9A-F]/gi, '').toUpperCase();
+                                  if (val.length > 6) val = val.slice(0, 6);
+                                  setEditValue(val);
+                                }}
+                                onBlur={() => commitHexChange(color.id)}
+                                onKeyDown={(e) => handleHexKeyDown(e, color.id)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
                             </div>
                           ) : (
                             <h2
@@ -1143,27 +1168,16 @@ useEffect(() => {
             </div>
           )}
 
-          
           <div className="seo-related-links">
             <h3 className="seo-section-title">Explore Related Palettes</h3>
             <div>
-              {Array.from({ length: 6 }).map((_, i) => {
-                // NEW: Use the first color of the CURRENT palette as a "seed"
-                // This ensures this page always suggests similar "vibe" palettes
-                const baseHex = colors[0].hex; 
-                const randomHexes = generateRandomPalette('analogous', 5, { seed: baseHex + i })
-                  .map((h) => h.replace('#', ''));
-                  
-                return (
-                  <a key={i} href={`/${randomHexes.join('-')}`}>
-                    {/* Use the traits to give the link a better name for SEO */}
-                    Similar {seoData.traits?.temperature || 'Modern'} Palette {i + 1}
-                  </a>
-                );
-              })}
+              {relatedPaletteLinks.map((link, i) => (
+                <a key={i} href={`/${link.hexes}`}>
+                  {link.label}
+                </a>
+              ))}
             </div>
           </div>
-          
 
           <div className="seo-color-reference">
             <h2 className="seo-section-title">Color Values</h2>

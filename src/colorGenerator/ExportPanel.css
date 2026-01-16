@@ -1,272 +1,110 @@
 /* ============================================
-   EXPORT PANEL
+   EXPORT PANEL - Specific Styles
    ============================================ */
 
-   .export-column {
-    flex: 0 0 0px;
-    height: 100%;
-    background: var(--color-bg-panel);
-    overflow: hidden;
-    transition: flex-basis var(--transition-panel);
-    position: relative;
-  }
-  
-  .export-column.open {
-    flex: 0 0 var(--panel-width-xl);
-  }
-  
-  .export-inner {
-    width: var(--panel-width-xl);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding-top: var(--space-20);
-  }
-  
-  .export-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-4) var(--space-4) var(--space-3);
-    border-bottom: 1px solid var(--color-border-subtle);
-  }
-  
-  .export-title {
-    font-size: var(--font-base);
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-  
-  .export-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--space-8);
-    height: var(--space-8);
-    background: none;
-    border: none;
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: background-color var(--transition-fast), 
-                color var(--transition-fast),
-                transform var(--transition-bounce);
-  }
-  
-  .export-close:hover {
-    background: var(--color-border-subtle);
-    color: var(--color-text-primary);
-    transform: scale(1.1);
-  }
-  
-  .export-close:active {
-    transform: scale(0.9);
-  }
-  
-  .export-scroll {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: var(--space-4);
-  }
-  
-  .export-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+/* Settings Toggle */
+.export-settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.export-settings-toggle:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.export-settings-toggle.active {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+.export-settings-toggle .chevron {
+  margin-left: auto;
+  transition: transform var(--transition-base);
+}
+
+.export-settings-toggle .chevron.open {
+  transform: rotate(180deg);
+}
+
+/* Settings Panel */
+.export-settings {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.export-setting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.export-setting label {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.export-setting-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.export-setting-options.two-col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.export-setting-options.three-col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.export-setting-options.four-col {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.export-setting-options .panel-btn {
+  padding: var(--space-2);
+  font-size: var(--font-xs);
+  text-align: center;
+}
+
+.export-setting-preview {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-faint);
+  margin-top: var(--space-1);
+}
+
+@media (max-width: 768px) {
+  .export-settings {
+    padding: var(--space-3);
     gap: var(--space-3);
   }
-  
-  .export-option {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: var(--space-5) var(--space-3);
-    background: var(--color-bg-card);
-    border: none;
-    border-radius: var(--radius-2xl);
-    cursor: pointer;
-    transition: background-color var(--transition-fast),
-                transform var(--transition-bounce), 
-                box-shadow var(--transition-base);
+
+  .export-setting-options.three-col,
+  .export-setting-options.four-col {
+    grid-template-columns: repeat(2, 1fr);
   }
-  
-  .export-option:hover {
-    background: var(--color-bg-card);
-    transform: scale(1.03);
-    box-shadow: var(--shadow-lg);
-  }
-  
-  .export-option:active {
-    transform: scale(0.97);
-  }
-  
-  .export-option.copied {
-    background: var(--color-text-primary);
-  }
-  
-  .export-option.copied .export-option-icon,
-  .export-option.copied .export-option-label {
-    color: var(--color-text-white);
-  }
-  
-  .export-option-icon {
-    color: var(--color-text-primary);
-    transition: color var(--transition-fast);
-  }
-  
-  .export-option-label {
-    font-size: var(--font-sm);
-    font-weight: 500;
-    color: var(--color-text-primary);
-    transition: color var(--transition-fast);
-  }
-  
-  /* === PREVIEW === */
-  .export-preview {
-    margin-top: var(--space-6);
-    padding-top: var(--space-5);
-    border-top: 1px solid var(--color-border-subtle);
-  }
-  
-  .export-preview-label {
-    display: block;
-    font-size: var(--font-xs);
-    font-weight: 600;
-    color: var(--color-text-faint);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-    margin-bottom: var(--space-3);
-  }
-  
-  .export-preview-colors {
-    display: flex;
-    height: 60px;
-    border-radius: var(--radius-xl);
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-  }
-  
-  .export-preview-color {
-    flex: 1;
-    transition: flex var(--transition-fast);
-  }
-  
-  .export-preview-colors:hover .export-preview-color:hover {
-    flex: 1.5;
-  }
-  
-  .export-preview-hexes {
-    display: flex;
-    margin-top: var(--space-2);
-  }
-  
-  .export-preview-hex {
-    flex: 1;
-    text-align: center;
-    font-size: var(--font-xs);
-    font-weight: 500;
-    color: var(--color-text-secondary);
-  }
-  
-  /* === SETTINGS TOGGLE === */
-  .export-settings-toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    padding: var(--space-3);
-    margin-bottom: var(--space-4);
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    font-size: var(--font-xs);
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-  }
-  
-  .export-settings-toggle:hover {
-    background: #f5f5f5;
-    color: var(--color-text-primary);
-  }
-  
-  .export-settings-toggle.active {
-    background: #f5f5f5;
-    color: var(--color-text-primary);
-    border-color: var(--color-text-primary);
-  }
-  
-  .export-settings-toggle .chevron {
-    margin-left: auto;
-    transition: transform var(--transition-base);
-  }
-  
-  .export-settings-toggle .chevron.open {
-    transform: rotate(180deg);
-  }
-  
-  /* === SETTINGS PANEL === */
-  .export-settings {
-    background: var(--color-bg-card);
-    border-radius: var(--radius-xl);
-    padding: var(--space-4);
-    margin-bottom: var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-  
-  .export-setting label {
-    display: block;
-    font-size: var(--font-xs);
-    font-weight: 600;
-    color: var(--color-text-secondary);
-    margin-bottom: var(--space-2);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-  }
-  
-  .export-setting-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-  
-  .export-setting-preview {
-    display: block;
-    margin-top: var(--space-2);
-    font-size: 11px;
-    color: var(--color-text-faint);
-  }
-  
-  /* === SCROLLBAR === */
-  .export-scroll::-webkit-scrollbar {
-    width: 4px;
-  }
-  
-  .export-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  .export-scroll::-webkit-scrollbar-thumb {
-    background: #ddd;
-    border-radius: 2px;
-  }
-  
-  /* === MOBILE === */
-  @media (max-width: 600px) {
-    .export-column.open {
-      flex: 0 0 var(--panel-width-md);
-    }
-  
-    .export-inner {
-      width: var(--panel-width-md);
-    }
-  
-    .export-option {
-      padding: var(--space-4) var(--space-3);
-    }
-  }
+}

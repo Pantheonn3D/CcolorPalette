@@ -7,11 +7,13 @@ import LandingPage from './pages/LandingPage/LandingPage';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
 import TermsOfService from './pages/Legal/TermsOfService';
 import ExplorePage from './pages/Explore/ExplorePage';
+import ScrollToTop from './components/ScrollToTop';  // Add this import
 
 function App() {
   return (
     <HelmetProvider>
       <Router>
+        <ScrollToTop />  {/* Add this line here */}
         <Routes>
           <Route path="/home" element={<LandingPage />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />

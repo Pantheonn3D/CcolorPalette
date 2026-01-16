@@ -13,10 +13,20 @@ const HARMONY_MODES = [
 
 const MOOD_OPTIONS = [
   { id: 'any', label: 'Any' },
-  { id: 'muted', label: 'Muted' },
-  { id: 'pastel', label: 'Pastel' },
   { id: 'vibrant', label: 'Vibrant' },
+  { id: 'bright', label: 'Bright' },
+  { id: 'pastel', label: 'Pastel' },
+  { id: 'soft', label: 'Soft' },
+  { id: 'muted', label: 'Muted' },
+  { id: 'moody', label: 'Moody' },
   { id: 'dark', label: 'Dark' },
+  { id: 'warm', label: 'Warm' },
+  { id: 'cool', label: 'Cool' },
+  { id: 'earthy', label: 'Earthy' },
+  { id: 'playful', label: 'Playful' },
+  { id: 'elegant', label: 'Elegant' },
+  { id: 'retro', label: 'Retro' },
+  { id: 'neon', label: 'Neon' },
 ];
 
 const PANEL_WIDTH = 240;
@@ -32,14 +42,6 @@ function MethodPanel({
   const handleMoodChange = (mood) => {
     trackEvent('change_mood', { mood });
     onConstraintsChange({ ...constraints, mood });
-  };
-
-  const handleContrastChange = (e) => {
-    onConstraintsChange({ ...constraints, minContrast: Number(e.target.value) });
-  };
-
-  const handleDarkModeToggle = () => {
-    onConstraintsChange({ ...constraints, darkModeFriendly: !constraints.darkModeFriendly });
   };
 
   return (
@@ -59,14 +61,14 @@ function MethodPanel({
         </div>
 
         <div className="panel-scroll">
-          {/* Harmony Section */}
+          {/* Harmony */}
           <div className="panel-section">
             <label className="panel-label">Harmony</label>
             <div className="panel-list">
               {HARMONY_MODES.map((mode) => (
                 <button
                   key={mode.id}
-                  className={`panel-list-item ${value === mode.id ? 'selected' : ''}`} // RE-ADD THIS
+                  className={`panel-list-item ${value === mode.id ? 'selected' : ''}`}
                   onClick={(e) => {
                     trackEvent('change_harmony', { mode: mode.id });
                     onChange(mode.id);
@@ -83,10 +85,10 @@ function MethodPanel({
             </div>
           </div>
 
-          {/* Mood Section */}
+          {/* Mood */}
           <div className="panel-section">
             <label className="panel-label">Mood</label>
-            <div className="panel-btn-grid">
+            <div className="panel-btn-grid mood-grid">
               {MOOD_OPTIONS.map((mood) => (
                 <button
                   key={mood.id}
@@ -102,7 +104,7 @@ function MethodPanel({
             </div>
           </div>
 
-          {/* Contrast Section */}
+          {/* Contrast */}
           <div className="panel-section">
             <label className="panel-label">
               Min Adjacent Contrast
@@ -114,7 +116,7 @@ function MethodPanel({
               max="4.5"
               step="0.1"
               value={constraints.minContrast}
-              onChange={handleContrastChange}
+              onChange={(e) => onConstraintsChange({ ...constraints, minContrast: Number(e.target.value) })}
               className="panel-slider"
             />
             <div className="panel-slider-labels">
@@ -123,12 +125,12 @@ function MethodPanel({
             </div>
           </div>
 
-          {/* Dark Mode Toggle */}
+          {/* Dark Mode */}
           <div className="panel-section">
             <button
               className={`panel-toggle ${constraints.darkModeFriendly ? 'active' : ''}`}
               onClick={(e) => {
-                handleDarkModeToggle();
+                onConstraintsChange({ ...constraints, darkModeFriendly: !constraints.darkModeFriendly });
                 e.currentTarget.blur();
               }}
             >
