@@ -7,20 +7,23 @@ import LandingPage from './pages/LandingPage/LandingPage';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
 import TermsOfService from './pages/Legal/TermsOfService';
 import ExplorePage from './pages/Explore/ExplorePage';
-import ScrollToTop from './components/ScrollToTop';  // Add this import
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
   return (
     <HelmetProvider>
       <Router>
-        <ScrollToTop />  {/* Add this line here */}
+        <ScrollToTop />
         <Routes>
+          {/* Specific routes FIRST */}
           <Route path="/home" element={<LandingPage />} />
+          <Route path="/explore" element={<ExplorePage />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
-          <Route path="/" element={<ColorGenerator />} />
+          
+          {/* Catch-all palette route LAST */}
           <Route path="/:hexCodes" element={<ColorGenerator />} />
-          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/" element={<ColorGenerator />} />
         </Routes>
       </Router>
     </HelmetProvider>

@@ -29,7 +29,7 @@ const MOOD_OPTIONS = [
   { id: 'neon', label: 'Neon' },
 ];
 
-const PANEL_WIDTH = 240;
+const PANEL_WIDTH = 280;
 
 function MethodPanel({
   isOpen,

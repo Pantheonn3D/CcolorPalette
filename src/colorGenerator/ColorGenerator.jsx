@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   Plus,
@@ -103,6 +104,8 @@ const formatContentSections = (content) => {
 };
 
 function ColorGenerator() {
+  const { hexCodes: urlHexCodes } = useParams();
+  const [searchParams] = useSearchParams();
   // Refs
   const containerRef = useRef(null);
   const colorsAreaRef = useRef(null);
@@ -683,62 +686,44 @@ function ColorGenerator() {
     };
   }, [colors.length]);
 
-  // URL Parsing on Mount
-  useEffect(() => {
-    const parseUrlState = () => {
-      const path = window.location.pathname.slice(1);
-      const params = new URLSearchParams(window.location.search);
-
-      if (path === 'home') return;
-
-      const navEntries = performance.getEntriesByType('navigation');
-      const isReload = navEntries.length > 0 && navEntries[0].type === 'reload';
-      const wasAlreadyHere = sessionStorage.getItem('ccolorpalette_session');
-
-      if (isReload || wasAlreadyHere) {
-        window.history.replaceState({}, '', '/');
-        sessionStorage.setItem('ccolorpalette_session', 'true');
-        return;
+    // URL Parsing - responds to React Router navigation
+    useEffect(() => {
+      // Skip if no hex codes in URL (we're at root "/")
+      if (!urlHexCodes) return;
+  
+      // Parse hex codes from URL
+      const hexCodes = urlHexCodes
+        .split('-')
+        .map((h) => {
+          const cleaned = h.toUpperCase().replace(/[^0-9A-F]/g, '');
+          return cleaned.length === 6 ? `#${cleaned}` : null;
+        })
+        .filter(Boolean);
+  
+      // Only update if we have valid colors
+      if (hexCodes.length >= 2) {
+        const initialColors = hexCodes.map((hex) => ({
+          id: generateId(),
+          hex,
+          locked: false,
+        }));
+        setHistory([{ colors: initialColors, visionMode: 'normal' }]);
+        setHistoryIndex(0);
       }
-
-      sessionStorage.setItem('ccolorpalette_session', 'true');
-
-      if (path && path.length > 0) {
-        const hexCodes = path
-          .split('-')
-          .map((h) => {
-            const cleaned = h.toUpperCase().replace(/[^0-9A-F]/g, '');
-            return cleaned.length === 6 ? `#${cleaned}` : null;
-          })
-          .filter(Boolean);
-
-        if (hexCodes.length >= 2) {
-          const initialColors = hexCodes.map((hex) => ({
-            id: generateId(),
-            hex,
-            locked: false,
-          }));
-          setHistory([{ colors: initialColors, visionMode: 'normal' }]);
-          setHistoryIndex(0);
-        }
-      }
-
-      // Parse query params
-      const mode = params.get('mode');
-      const mood = params.get('mood');
-      const contrast = parseFloat(params.get('contrast'));
-      const dark = params.get('dark');
-      const vision = params.get('vision');
-
+  
+      // Parse query params for settings
+      const mode = searchParams.get('mode');
+      const mood = searchParams.get('mood');
+      const contrast = parseFloat(searchParams.get('contrast'));
+      const dark = searchParams.get('dark');
+      const vision = searchParams.get('vision');
+  
       if (['auto', 'mono', 'analogous', 'complementary', 'splitComplementary', 'triadic'].includes(mode)) {
         setGenerationMode(mode);
       }
-      
-      // FIXED: Now validates against all mood options
       if (VALID_MOODS.includes(mood)) {
         setConstraints((prev) => ({ ...prev, mood }));
       }
-      
       if (!isNaN(contrast) && contrast >= 1 && contrast <= 4.5) {
         setConstraints((prev) => ({ ...prev, minContrast: contrast }));
       }
@@ -748,10 +733,7 @@ function ColorGenerator() {
       if (['normal', 'protanopia', 'deuteranopia', 'tritanopia', 'achromatopsia'].includes(vision)) {
         setColorBlindMode(vision);
       }
-    };
-
-    parseUrlState();
-  }, []);
+    }, [urlHexCodes, searchParams]);
 
   // Update URL on State Change
   useEffect(() => {
