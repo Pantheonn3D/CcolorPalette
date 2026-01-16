@@ -12,7 +12,13 @@
   overflow: hidden;
   transition: flex-basis var(--transition-panel);
   position: relative;
+
+    /* --- ADD THIS LINE --- */
+    color: var(--color-text-primary); 
+    /* -------------------- */
 }
+
+
 
 .panel-column.open {
   flex-basis: var(--panel-width-lg);
@@ -708,6 +714,9 @@
     order: 100;
     overflow: hidden;
     transition: flex-basis var(--transition-panel);
+      /* --- ADD THIS LINE --- */
+  color: var(--color-text-primary); 
+  /* -------------------- */
   }
 
   .panel-column.open {

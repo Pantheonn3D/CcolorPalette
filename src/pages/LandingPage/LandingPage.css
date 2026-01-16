@@ -1361,6 +1361,9 @@
     padding: var(--space-10) 0 var(--space-6);
     background: var(--color-text-primary);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
+      /* --- ADD THIS LINE --- */
+  color: var(--color-text-white);
+  /* -------------------- */
   }
   
   .footer-container {

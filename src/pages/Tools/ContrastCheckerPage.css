@@ -5,6 +5,10 @@
     display: flex;
     flex-direction: column;
     background: var(--color-bg-card);
+
+      /* --- ADD THIS LINE --- */
+  color: var(--color-text-primary);
+  /* -------------------- */
   }
   
   .checker-tool {

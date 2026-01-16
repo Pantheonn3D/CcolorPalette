@@ -516,6 +516,10 @@
     border-radius: var(--radius-xl);
     padding: var(--space-5);
     margin-bottom: var(--space-5);
+    
+      /* --- ADD THIS LINE (Force dark text context) --- */
+  color: var(--color-text-primary);
+  /* ----------------------------------------------- */
   }
   
   .related-links-title {
@@ -572,6 +576,10 @@
     border-radius: var(--radius-xl);
     padding: var(--space-5);
     text-align: center;
+
+      /* --- ADD THIS LINE (Force white text context) --- */
+  color: var(--color-text-white);
+  /* ----------------------------------------------- */
   }
   
   .sidebar-cta-card h4 {
@@ -601,6 +609,10 @@
     font-size: var(--font-sm);
     font-weight: 600;
     transition: transform var(--transition-fast);
+
+      /* --- ADD THIS LINE (Force dark text on white button) --- */
+  color: var(--color-text-primary) !important;
+  /* ----------------------------------------------------- */
   }
   
   .sidebar-cta-btn:hover {
