@@ -88,6 +88,7 @@ import {
   Search,
   Settings,
   Webhook,
+  Wrench,
 } from 'lucide-react';
 import './LandingPage.css';
 
@@ -1492,6 +1493,181 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* Resources & Guides Section */}
+      <section id="resources" className="resources-section" aria-labelledby="resources-title">
+        <div className="section-container">
+          <div className="section-header">
+            <span className="section-badge">
+              <BookOpen size={14} />
+              <span>Learn More</span>
+            </span>
+            <h2 id="resources-title" className="section-title">Guides & Resources</h2>
+            <p className="section-subtitle">
+              Deepen your understanding of color with our comprehensive guides and tools.
+            </p>
+          </div>
+
+          <div className="resources-grid">
+            {/* Design Guides */}
+            <div className="resource-category">
+              <div className="resource-category-header">
+                <BookOpen size={18} />
+                <h3>Design Guides</h3>
+              </div>
+              <div className="resource-list">
+                <Link to="/guides/color-theory" className="resource-item">
+                  <div className="resource-item-icon" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                    <Blend size={18} />
+                  </div>
+                  <div className="resource-item-content">
+                    <span className="resource-item-title">Color Theory Guide</span>
+                    <span className="resource-item-desc">Master the color wheel and harmonies</span>
+                  </div>
+                  <ArrowRight size={14} className="resource-item-arrow" />
+                </Link>
+
+                <Link to="/guides/color-psychology" className="resource-item">
+                  <div className="resource-item-icon" style={{ background: 'linear-gradient(135deg, #ec4899, #f43f5e)' }}>
+                    <Heart size={18} />
+                  </div>
+                  <div className="resource-item-content">
+                    <span className="resource-item-title">Color Psychology</span>
+                    <span className="resource-item-desc">How colors influence emotions</span>
+                  </div>
+                  <ArrowRight size={14} className="resource-item-arrow" />
+                </Link>
+
+                <Link to="/guides/accessibility-wcag" className="resource-item">
+                  <div className="resource-item-icon" style={{ background: 'linear-gradient(135deg, #06b6d4, #0ea5e9)' }}>
+                    <Accessibility size={18} />
+                  </div>
+                  <div className="resource-item-content">
+                    <span className="resource-item-title">WCAG Accessibility</span>
+                    <span className="resource-item-desc">Design for everyone</span>
+                  </div>
+                  <ArrowRight size={14} className="resource-item-arrow" />
+                </Link>
+
+                <Link to="/guides/brand-color-palette" className="resource-item">
+                  <div className="resource-item-icon" style={{ background: 'linear-gradient(135deg, #f59e0b, #eab308)' }}>
+                    <Award size={18} />
+                  </div>
+                  <div className="resource-item-content">
+                    <span className="resource-item-title">Brand Color Guide</span>
+                    <span className="resource-item-desc">Build memorable brand identities</span>
+                  </div>
+                  <ArrowRight size={14} className="resource-item-arrow" />
+                </Link>
+
+                <Link to="/guides/tailwind-css-colors" className="resource-item">
+                  <div className="resource-item-icon" style={{ background: 'linear-gradient(135deg, #38bdf8, #0ea5e9)' }}>
+                    <Wind size={18} />
+                  </div>
+                  <div className="resource-item-content">
+                    <span className="resource-item-title">Tailwind CSS Colors</span>
+                    <span className="resource-item-desc">Integrate with Tailwind projects</span>
+                  </div>
+                  <ArrowRight size={14} className="resource-item-arrow" />
+                </Link>
+
+                <Link to="/guides/web-design-colors" className="resource-item">
+                  <div className="resource-item-icon" style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)' }}>
+                    <Monitor size={18} />
+                  </div>
+                  <div className="resource-item-content">
+                    <span className="resource-item-title">Web Design Colors</span>
+                    <span className="resource-item-desc">Best practices for the web</span>
+                  </div>
+                  <ArrowRight size={14} className="resource-item-arrow" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Color Tools */}
+            <div className="resource-category">
+              <div className="resource-category-header">
+                <Wrench size={18} />
+                <h3>Color Tools</h3>
+              </div>
+              <div className="resource-list">
+                <Link to="/tools/contrast-checker" className="resource-item">
+                  <div className="resource-item-icon" style={{ background: 'var(--color-text-primary)' }}>
+                    <Contrast size={18} />
+                  </div>
+                  <div className="resource-item-content">
+                    <span className="resource-item-title">Contrast Checker</span>
+                    <span className="resource-item-desc">Test WCAG compliance</span>
+                  </div>
+                  <ArrowRight size={14} className="resource-item-arrow" />
+                </Link>
+
+                <Link to="/tools/color-converter" className="resource-item">
+                  <div className="resource-item-icon" style={{ background: 'linear-gradient(135deg, #e63946, #f4a261)' }}>
+                    <RefreshCw size={18} />
+                  </div>
+                  <div className="resource-item-content">
+                    <span className="resource-item-title">Color Converter</span>
+                    <span className="resource-item-desc">HEX, RGB, HSL, OKLCH</span>
+                  </div>
+                  <ArrowRight size={14} className="resource-item-arrow" />
+                </Link>
+
+                <Link to="/glossary" className="resource-item">
+                  <div className="resource-item-icon" style={{ background: 'linear-gradient(135deg, #2a9d8f, #e9c46a)' }}>
+                    <BookOpen size={18} />
+                  </div>
+                  <div className="resource-item-content">
+                    <span className="resource-item-title">Color Glossary</span>
+                    <span className="resource-item-desc">Color terminology A-Z</span>
+                  </div>
+                  <ArrowRight size={14} className="resource-item-arrow" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Explore Palettes */}
+            <div className="resource-category">
+              <div className="resource-category-header">
+                <Grid3X3 size={18} />
+                <h3>Explore Palettes</h3>
+              </div>
+              <div className="explore-link-grid">
+                <div className="explore-link-column">
+                  <span className="explore-link-label">By Color</span>
+                  <Link to="/palettes/color/red">Red</Link>
+                  <Link to="/palettes/color/orange">Orange</Link>
+                  <Link to="/palettes/color/yellow">Yellow</Link>
+                  <Link to="/palettes/color/green">Green</Link>
+                  <Link to="/palettes/color/blue">Blue</Link>
+                  <Link to="/palettes/color/purple">Purple</Link>
+                  <Link to="/palettes/color/pink">Pink</Link>
+                </div>
+                <div className="explore-link-column">
+                  <span className="explore-link-label">By Mood</span>
+                  <Link to="/palettes/mood/vibrant">Vibrant</Link>
+                  <Link to="/palettes/mood/pastel">Pastel</Link>
+                  <Link to="/palettes/mood/muted">Muted</Link>
+                  <Link to="/palettes/mood/dark">Dark</Link>
+                  <Link to="/palettes/mood/warm">Warm</Link>
+                  <Link to="/palettes/mood/cool">Cool</Link>
+                  <Link to="/palettes/mood/earthy">Earthy</Link>
+                </div>
+                <div className="explore-link-column">
+                  <span className="explore-link-label">By Industry</span>
+                  <Link to="/palettes/industry/technology">Technology</Link>
+                  <Link to="/palettes/industry/healthcare">Healthcare</Link>
+                  <Link to="/palettes/industry/finance">Finance</Link>
+                  <Link to="/palettes/industry/food">Food</Link>
+                  <Link to="/palettes/industry/fashion">Fashion</Link>
+                  <Link to="/palettes/industry/education">Education</Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
       {/* Final CTA Section */}
       <section className="final-cta-section" aria-labelledby="final-cta-title">
         <div className="section-container">
@@ -1526,28 +1702,53 @@ function LandingPage() {
                 <span className="footer-logo-text">CColorPalette</span>
               </div>
               <p className="footer-tagline">
-                The free color palette generator for designers, developers, and creative professionals.
-                Create beautiful, accessible color schemes instantly.
+                Free color palette generator for designers, developers, and creative professionals.
               </p>
             </div>
 
             <div className="footer-links">
               <div className="footer-column">
-                <h4>Product</h4>
-                <Link to="/">Generator</Link>
+                <h4>Tools</h4>
+                <Link to="/">Palette Generator</Link>
                 <Link to="/explore">Explore Palettes</Link>
-                <a href="#features" onClick={(e) => { e.preventDefault(); scrollToSection('#features'); }}>Features</a>
-                <a href="#faq" onClick={(e) => { e.preventDefault(); scrollToSection('#faq'); }}>FAQ</a>
+                <Link to="/tools/color-converter">Color Converter</Link>
+                <Link to="/tools/contrast-checker">Contrast Checker</Link>
               </div>
+
+              <div className="footer-column">
+                <h4>Guides</h4>
+                <Link to="/guides/color-theory">Color Theory</Link>
+                <Link to="/guides/accessibility-wcag">WCAG Accessibility</Link>
+                <Link to="/guides/tailwind-css-colors">Tailwind CSS</Link>
+                <Link to="/guides/brand-color-palette">Brand Colors</Link>
+                <Link to="/guides/color-psychology">Color Psychology</Link>
+                <Link to="/guides/web-design-colors">Web Design</Link>
+              </div>
+
+              <div className="footer-column">
+                <h4>By Color</h4>
+                <Link to="/palettes/color/red">Red Palettes</Link>
+                <Link to="/palettes/color/orange">Orange Palettes</Link>
+                <Link to="/palettes/color/green">Green Palettes</Link>
+                <Link to="/palettes/color/blue">Blue Palettes</Link>
+                <Link to="/palettes/color/purple">Purple Palettes</Link>
+                <Link to="/palettes/color/pink">Pink Palettes</Link>
+              </div>
+
+              <div className="footer-column">
+                <h4>By Mood</h4>
+                <Link to="/palettes/mood/vibrant">Vibrant</Link>
+                <Link to="/palettes/mood/pastel">Pastel</Link>
+                <Link to="/palettes/mood/muted">Muted</Link>
+                <Link to="/palettes/mood/dark">Dark Mode</Link>
+                <Link to="/palettes/mood/warm">Warm</Link>
+                <Link to="/palettes/mood/cool">Cool</Link>
+              </div>
+
               <div className="footer-column">
                 <h4>Resources</h4>
-                <a href="#theory" onClick={(e) => { e.preventDefault(); scrollToSection('#theory'); }}>Color Theory</a>
-                <a href="#use-cases" onClick={(e) => { e.preventDefault(); scrollToSection('#use-cases'); }}>Use Cases</a>
-                <a href="#export" onClick={(e) => { e.preventDefault(); scrollToSection('#export'); }}>Export Formats</a>
-                <a href="#accessibility" onClick={(e) => { e.preventDefault(); scrollToSection('#accessibility'); }}>Accessibility</a>
-              </div>
-              <div className="footer-column">
-                <h4>Legal</h4>
+                <Link to="/glossary">Color Glossary</Link>
+                <Link to="/sitemap">Sitemap</Link>
                 <Link to="/privacy">Privacy Policy</Link>
                 <Link to="/terms">Terms of Service</Link>
               </div>
@@ -1555,7 +1756,7 @@ function LandingPage() {
           </div>
 
           <div className="footer-bottom">
-            <p>© {new Date().getFullYear()} CColorPalette. All rights reserved. Free color palette generator for everyone.</p>
+            <p>© {new Date().getFullYear()} CColorPalette. Free color palette generator. All rights reserved.</p>
           </div>
         </div>
       </footer>

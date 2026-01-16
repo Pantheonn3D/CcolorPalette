@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   Plus,
@@ -1133,7 +1133,7 @@ function ColorGenerator() {
         </main>
       </div>
 
-      {/* SEO Footer */}
+      {/* Enhanced SEO Footer */}
       <footer className="seo-content-footer">
         <div className="seo-content-wrapper">
           <h1 className="seo-main-title">{seoData.title}</h1>
@@ -1150,17 +1150,57 @@ function ColorGenerator() {
             </div>
           )}
 
+          {/* Enhanced Related Links with more context */}
           <div className="seo-related-links">
-            <h3 className="seo-section-title">Explore Related Palettes</h3>
-            <div>
+            <h3 className="seo-section-title">Explore Similar Palettes</h3>
+            <div className="seo-palette-links">
               {relatedPaletteLinks.map((link, i) => (
-                <a key={i} href={`/${link.hexes}`}>
+                <Link key={i} to={`/${link.hexes}`} className="seo-palette-link">
                   {link.label}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
 
+          {/* Internal Navigation Links */}
+          <nav className="seo-internal-nav">
+            <div className="seo-nav-section">
+              <h4>Browse by Color</h4>
+              <Link to="/palettes/color/red">Red Palettes</Link>
+              <Link to="/palettes/color/orange">Orange Palettes</Link>
+              <Link to="/palettes/color/yellow">Yellow Palettes</Link>
+              <Link to="/palettes/color/green">Green Palettes</Link>
+              <Link to="/palettes/color/blue">Blue Palettes</Link>
+              <Link to="/palettes/color/purple">Purple Palettes</Link>
+            </div>
+            
+            <div className="seo-nav-section">
+              <h4>Browse by Mood</h4>
+              <Link to="/palettes/mood/vibrant">Vibrant</Link>
+              <Link to="/palettes/mood/pastel">Pastel</Link>
+              <Link to="/palettes/mood/muted">Muted</Link>
+              <Link to="/palettes/mood/dark">Dark Mode</Link>
+              <Link to="/palettes/mood/warm">Warm</Link>
+              <Link to="/palettes/mood/cool">Cool</Link>
+            </div>
+            
+            <div className="seo-nav-section">
+              <h4>Learn More</h4>
+              <Link to="/guides/color-theory">Color Theory Guide</Link>
+              <Link to="/guides/accessibility-wcag">Accessibility Guide</Link>
+              <Link to="/guides/tailwind-css-colors">Tailwind CSS Colors</Link>
+              <Link to="/glossary">Color Glossary</Link>
+            </div>
+            
+            <div className="seo-nav-section">
+              <h4>Tools</h4>
+              <Link to="/tools/color-converter">Color Converter</Link>
+              <Link to="/tools/contrast-checker">Contrast Checker</Link>
+              <Link to="/explore">Explore All Palettes</Link>
+            </div>
+          </nav>
+
+          {/* Color Values Reference */}
           <div className="seo-color-reference">
             <h2 className="seo-section-title">Color Values</h2>
             <div className="seo-color-grid">
@@ -1181,6 +1221,7 @@ function ColorGenerator() {
             </div>
           </div>
 
+          {/* Generated Content */}
           <article className="seo-article">
             {contentSections.map((section) => (
               <section key={section.id} className="seo-section">
@@ -1190,17 +1231,29 @@ function ColorGenerator() {
             ))}
           </article>
 
+          {/* Keywords */}
           {seoData.keywords?.length > 0 && (
             <div className="seo-keywords">
               <span className="seo-keywords-label">Related searches: </span>
-              {seoData.keywords.slice(0, 8).map((keyword, index) => (
+              {seoData.keywords.slice(0, 12).map((keyword, index) => (
                 <span key={index} className="seo-keyword">
                   {keyword}
-                  {index < Math.min(seoData.keywords.length, 8) - 1 && ', '}
+                  {index < Math.min(seoData.keywords.length, 12) - 1 && ', '}
                 </span>
               ))}
             </div>
           )}
+
+          {/* Footer Links */}
+          <div className="seo-footer-links">
+            <Link to="/home">Home</Link>
+            <Link to="/explore">Explore Palettes</Link>
+            <Link to="/guides/color-theory">Color Theory</Link>
+            <Link to="/glossary">Glossary</Link>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
+            <Link to="/sitemap">Sitemap</Link>
+          </div>
         </div>
       </footer>
     </div>

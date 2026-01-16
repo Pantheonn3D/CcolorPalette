@@ -928,3 +928,14 @@
       background: rgba(0, 0, 0, 0.15);
     }
   }
+
+
+  .seo-content-footer a {
+    color: inherit;
+    text-decoration: none;
+    transition: opacity var(--transition-fast);
+  }
+  
+  .seo-content-footer a:hover {
+    opacity: 0.7;
+  }
